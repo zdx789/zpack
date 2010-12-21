@@ -44,13 +44,13 @@ struct FileEntry
 class Package : public IPackage
 {
 public:
-	Package(const char* filename, bool readOnly);
+	Package(const char* filename, bool readonly);
 	~Package();
 
 	bool valid() const;
 
-	virtual bool hasFile(const char* filename);		//not available when package is dirty
-	virtual IFile* openFile(const char* filename);	//not available when package is dirty
+	virtual bool hasFile(const char* filename);
+	virtual IFile* openFile(const char* filename);
 	virtual void closeFile(IFile* file);
 
 	virtual u32 getFileCount();
@@ -61,7 +61,8 @@ public:
 	virtual bool dirty();
 	virtual void flush();
 
-	virtual void defrag();
+	virtual u64 countFragmentSize(u64& bytesToMove);
+	virtual bool defrag();
 
 private:
 	bool readHeader();
@@ -75,12 +76,13 @@ private:
 	u32 stringHash(const char* str, u32 seed);
 
 private:
+	std::string					m_packageName;
 	std::fstream				m_stream;
 	PackageHeader				m_header;
 	std::vector<FileEntry>		m_fileEntries;
 	std::vector<int>			m_hashTable;
 	std::vector<std::string>	m_filenames;
-	bool						m_readOnly;
+	bool						m_readonly;
 	bool						m_dirty;
 };
 
