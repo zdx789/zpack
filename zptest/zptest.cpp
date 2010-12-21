@@ -169,6 +169,30 @@ int _tmain(int argc, _TCHAR* argv[])
 				std::cout << "failed." << std::endl;
 			}
 		}
+		else if (command == "fragment")
+		{
+			if (pack != NULL)
+			{
+				unsigned __int64 toMove;
+				unsigned __int64 fragSize = pack->countFragmentSize(toMove);
+				std::cout << "fragment:" << fragSize << " bytes, " << toMove << " bytes need moving" << std::endl;
+			}
+			else
+			{
+				std::cout << "failed." << std::endl;
+			}
+		}
+		else if (command == "defrag")
+		{
+			if (pack != NULL)
+			{
+				pack->defrag();
+			}
+			else
+			{
+				std::cout << "failed." << std::endl;
+			}
+		}
 		else if (command == "help")
 		{
 			std::cout << "create path" << std::endl;
@@ -178,6 +202,8 @@ int _tmain(int argc, _TCHAR* argv[])
 			std::cout << "add externalPath filename" << std::endl;
 			std::cout << "remove filename" << std::endl;
 			std::cout << "flush" << std::endl;
+			std::cout << "fragment" << std::endl;
+			std::cout << "defrag" << std::endl;
 			std::cout << "exit" << std::endl;
 		}
 		else

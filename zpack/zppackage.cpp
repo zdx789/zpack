@@ -1,6 +1,7 @@
 #include "zppackage.h"
 #include "zpfile.h"
 #include <cassert>
+#include "io.h"
 
 namespace zp
 {
@@ -12,8 +13,8 @@ const u32 HASH_SEED1 = 131;
 const u32 HASH_SEED2 = 1313;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-Package::Package(const char* filename, bool readOnly)
-	: m_readOnly(readOnly)
+Package::Package(const char* filename, bool readonly)
+	: m_readonly(readonly)
 	, m_dirty(false)
 {
 	m_stream.open(filename, std::ios_base::in | std::ios_base::out | std::ios_base::binary);
@@ -26,6 +27,10 @@ Package::Package(const char* filename, bool readOnly)
 		return;
 	}
 	buildHashTable();
+	if (!readonly)
+	{
+		m_packageName = filename;
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -98,7 +103,7 @@ bool Package::getFilenameByIndex(char* buffer, u32 bufferSize, u32 index)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool Package::addFile(const char* externalFilename, const char* filename, u32 flag)
 {
-	if (m_readOnly)
+	if (m_readonly)
 	{
 		return false;
 	}
@@ -144,7 +149,7 @@ bool Package::addFile(const char* externalFilename, const char* filename, u32 fl
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool Package::removeFile(const char* filename)
 {
-	if (m_readOnly)
+	if (m_readonly)
 	{
 		return false;
 	}
@@ -171,7 +176,7 @@ bool Package::dirty()
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void Package::flush()
 {
-	if (m_readOnly || !m_dirty)
+	if (m_readonly || !m_dirty)
 	{
 		return;
 	}
@@ -200,15 +205,86 @@ void Package::flush()
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-void Package::defrag()
+u64 Package::countFragmentSize(u64& bytesToMove)
 {
+	if (m_dirty)
+	{
+		bytesToMove = 0;
+		return 0;
+	}
+	u64 totalSize = m_header.headerSize + m_header.fileCount * m_header.fileEntrySize + m_header.filenameSize;
+	bool moving = false;
+	bytesToMove = 0;
+	u64 nextPos = m_header.headerSize;
+	for (u32 i = 0; i < m_fileEntries.size(); ++i)
+	{
+		FileEntry& entry = m_fileEntries[i];
+		if (!moving && entry.byteOffset != nextPos)
+		{
+			moving = true;
+		}
+		if (moving)
+		{
+			bytesToMove += entry.fileSize;
+		}
+		nextPos += entry.fileSize;
+		totalSize += entry.fileSize;
+	}
+	if (bytesToMove > 0 || nextPos != m_header.fileEntryOffset)
+	{
+		bytesToMove += (m_header.fileCount * m_header.fileEntrySize + m_header.filenameSize);
+	}
+	m_stream.seekg(0, std::ios::end);
+	u64 currentSize = m_stream.tellg();
+	return currentSize - totalSize;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+bool Package::defrag()
+{
+	if (m_readonly || m_dirty)
+	{
+		return false;
+	}
+	std::vector<char> tempBuffer;
+	u64 nextPos = m_header.headerSize;
+	for (u32 i = 0; i < m_fileEntries.size(); ++i)
+	{
+		FileEntry& entry = m_fileEntries[i];
+		if (entry.byteOffset != nextPos)
+		{
+			tempBuffer.resize(entry.fileSize);
+			m_stream.seekg(entry.byteOffset, std::ios::beg);
+			m_stream.read(&tempBuffer[0], entry.fileSize);
+			m_stream.seekg(nextPos, std::ios::beg);
+			m_stream.write(&tempBuffer[0], entry.fileSize);
+			entry.byteOffset = nextPos;
+		}
+		nextPos += entry.fileSize;
+	}
+	m_header.fileEntryOffset = nextPos;
+	m_header.filenameOffset = m_header.fileEntryOffset + m_header.fileCount * sizeof(FileEntry);
+	m_dirty = true;
+	flush();	//no need to rebuild hash table here, but it's ok b/c defrag will be slow anyway
+	//cut extra length of file
+	m_stream.close();
+	FILE* fd = fopen(m_packageName.c_str(), "a+b");
+	if (fd == NULL)
+	{
+		return false;
+	}
+	_chsize_s(_fileno(fd), m_header.filenameOffset + m_header.filenameSize);
+	fclose(fd);
+	m_stream.open(m_packageName.c_str(), std::ios_base::in | std::ios_base::out | std::ios_base::binary);
+	assert(m_stream.is_open());
+	return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool Package::readHeader()
 {
 	m_stream.seekg(0, std::ios::end);
-	u64 packageSize = static_cast<__int64>(m_stream.tellg());
+	u64 packageSize = m_stream.tellg();
 	if (packageSize < sizeof(PackageHeader))
 	{
 		return false;
@@ -226,7 +302,7 @@ bool Package::readHeader()
 	}
 	if (m_header.version != CURRENT_VERSION)
 	{
-		m_readOnly = true;
+		m_readonly = true;
 	}
 	return true;
 }
@@ -263,7 +339,7 @@ bool Package::readFileEntries()
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool Package::readFilenames()
 {
-	if (m_fileEntries.empty() || m_readOnly)
+	if (m_fileEntries.empty() || m_readonly)
 	{
 		return true;
 	}
