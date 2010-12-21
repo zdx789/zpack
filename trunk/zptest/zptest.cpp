@@ -4,7 +4,7 @@
 //#include <SDKDDKVer.h>
 #include <stdio.h>
 #include <tchar.h>
-
+#include "windows.h"
 #include "zpack.h"
 #include <string>
 #include <hash_map>
@@ -23,6 +23,47 @@ std::string getWord(const std::string& input, size_t& pos)
 		pos = input.length();
 	}
 	return input.substr(start, pos - start);
+}
+
+typedef void (WINAPI *EnumCallback)(const std::string& path, void* param);
+void enumFile(const std::string& searchPath, EnumCallback callback, void* param)
+{
+	WIN32_FIND_DATAA fd;
+	HANDLE findFile = ::FindFirstFileA((searchPath + "*").c_str(), &fd);
+
+	if (findFile == INVALID_HANDLE_VALUE)
+	{
+		::FindClose(findFile);
+		return;
+	}
+
+	while (true)
+	{
+		if ((fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
+		{
+			//file
+			callback(searchPath + fd.cFileName, param);
+		}
+		else if (strcmp(fd.cFileName, ".") != 0 && strcmp(fd.cFileName, "..")  != 0)
+		{
+			//folder
+			enumFile(searchPath + fd.cFileName + "/", callback, param);
+		}
+		if (!FindNextFileA(findFile, &fd))
+		{
+			::FindClose(findFile);
+			return;
+		}
+	}
+}
+
+std::string g_basePath;
+void WINAPI addPackFile(const std::string& filename, void* param)
+{
+	zp::IPackage* pack = reinterpret_cast<zp::IPackage*>(param);
+	std::string nameInPack = filename.substr(g_basePath.length(), filename.length() - g_basePath.length());
+	pack->addFile(filename.c_str(), nameInPack.c_str());
+	std::cout << nameInPack << std::endl;
 }
 
 int _tmain(int argc, _TCHAR* argv[])
@@ -144,6 +185,18 @@ int _tmain(int argc, _TCHAR* argv[])
 				std::cout << "failed." << std::endl;
 			}
 		}
+		else if (command == "adddir")
+		{
+			if (pack != NULL && !param0.empty())
+			{
+				g_basePath = param0;
+				enumFile(param0, addPackFile, pack);
+			}
+			else
+			{
+				std::cout << "failed." << std::endl;
+			}
+		}
 		else if (command == "remove")
 		{
 			if (pack != NULL)
@@ -200,6 +253,7 @@ int _tmain(int argc, _TCHAR* argv[])
 			std::cout << "close" << std::endl;
 			std::cout << "list" << std::endl;
 			std::cout << "add externalPath filename" << std::endl;
+			std::cout << "adddir externalPath" << std::endl;
 			std::cout << "remove filename" << std::endl;
 			std::cout << "flush" << std::endl;
 			std::cout << "fragment" << std::endl;
