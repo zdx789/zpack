@@ -1,9 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "zpack", "zpack.vcxproj", "{287EEAD4-7FEF-4444-A683-0A088A33D655}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "zpack", "zpack_vs2010.vcxproj", "{287EEAD4-7FEF-4444-A683-0A088A33D655}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "zptest", "..\zptest\zptest.vcxproj", "{64EC7A26-97C8-4526-A29A-097D53D7C9B5}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "zptest", "..\zptest\zptest-vs2010.vcxproj", "{64EC7A26-97C8-4526-A29A-097D53D7C9B5}"
 	ProjectSection(ProjectDependencies) = postProject
 		{287EEAD4-7FEF-4444-A683-0A088A33D655} = {287EEAD4-7FEF-4444-A683-0A088A33D655}
 	EndProjectSection
