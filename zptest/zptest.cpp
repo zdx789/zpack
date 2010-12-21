@@ -1,7 +1,10 @@
 // ptest.cpp : Defines the entry point for the console application.
 //
 
-#include "stdafx.h"
+#include <SDKDDKVer.h>
+#include <stdio.h>
+#include <tchar.h>
+
 #include "zpack.h"
 #include <string>
 #include <hash_map>
