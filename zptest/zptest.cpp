@@ -1,7 +1,7 @@
 // ptest.cpp : Defines the entry point for the console application.
 //
 
-#include <SDKDDKVer.h>
+//#include <SDKDDKVer.h>
 #include <stdio.h>
 #include <tchar.h>
 
@@ -113,7 +113,7 @@ int _tmain(int argc, _TCHAR* argv[])
 			if (pack != NULL)
 			{
 				size_t count = pack->getFileCount();
-				for (size_t i = 0; i < count; ++i)
+				for (unsigned long i = 0; i < count; ++i)
 				{
 					char filename[256];
 					pack->getFilenameByIndex(filename, sizeof(filename), i);

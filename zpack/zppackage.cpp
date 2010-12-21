@@ -84,7 +84,7 @@ void Package::closeFile(IFile* file)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 u32 Package::getFileCount()
 {
-	return m_fileEntries.size();
+	return (u32)m_fileEntries.size();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -193,9 +193,9 @@ void Package::flush()
 	for (u32 i = 0; i < m_filenames.size(); ++i)
 	{
 		const std::string& filename = m_filenames[i];
-		m_stream.write(filename.c_str(), filename.length());
+		m_stream.write(filename.c_str(), (u32)filename.length());
 		m_stream.write("\n", 1);
-		m_header.filenameSize += (filename.length() + 1);
+		m_header.filenameSize += ((u32)filename.length() + 1);
 	}
 	m_stream.seekg(0, std::ios::beg);
 	m_stream.write((char*)&m_header, sizeof(m_header));
@@ -410,7 +410,7 @@ int Package::getFileIndex(const char* filename)
 void Package::insertFile(FileEntry& entry, const char* filename)
 {
 	u32 fileIndex = 0;
-	u32 maxIndex = m_fileEntries.size();
+	u32 maxIndex = (u32)m_fileEntries.size();
 	u64 lastEnd = m_header.headerSize;
 	while (fileIndex < maxIndex)
 	{
