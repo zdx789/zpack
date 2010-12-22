@@ -176,6 +176,14 @@
 	</References>
 	<Files>
 		<File
+			RelativePath=".\zpexplorer.cpp"
+			>
+		</File>
+		<File
+			RelativePath=".\zpexplorer.h"
+			>
+		</File>
+		<File
 			RelativePath=".\zptest.cpp"
 			>
 		</File>
