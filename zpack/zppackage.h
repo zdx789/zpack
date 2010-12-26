@@ -14,6 +14,8 @@ typedef unsigned __int64 u64;
 const u32 PACKAGE_FILE_SIGN = 'KAPZ';
 const u32 CURRENT_VERSION = '0010';
 
+const u32 FILE_FLAG_DELETED = 1;
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 struct PackageHeader
 {
@@ -75,12 +77,14 @@ private:
 	
 	u32 stringHash(const char* str, u32 seed);
 
+	void fixHashTable(u32 index);
+
 private:
 	std::string					m_packageName;
 	std::fstream				m_stream;
 	PackageHeader				m_header;
-	std::vector<FileEntry>		m_fileEntries;
 	std::vector<int>			m_hashTable;
+	std::vector<FileEntry>		m_fileEntries;
 	std::vector<std::string>	m_filenames;
 	bool						m_readonly;
 	bool						m_dirty;
