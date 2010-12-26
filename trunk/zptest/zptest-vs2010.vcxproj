@@ -81,10 +81,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="fileenum.cpp" />
     <ClCompile Include="zpexplorer.cpp" />
     <ClCompile Include="zptest.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="fileenum.h" />
     <ClInclude Include="zpexplorer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

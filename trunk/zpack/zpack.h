@@ -29,6 +29,9 @@ public:
 
 	virtual unsigned __int64 countFragmentSize(unsigned __int64& bytesToMove) = 0;
 	virtual bool defrag() = 0;
+
+protected:
+	virtual ~IPackage(){}
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -38,6 +41,9 @@ public:
 	virtual unsigned long getSize() = 0;
 	virtual void setPointer(unsigned long pos) = 0;
 	virtual unsigned long read(void* buffer, unsigned long size) = 0;
+
+protected:
+	virtual ~IFile(){}
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

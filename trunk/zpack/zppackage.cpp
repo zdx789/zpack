@@ -158,11 +158,13 @@ bool Package::removeFile(const char* filename)
 	{
 		return false;
 	}
-	assert(m_filenames.size() == m_fileEntries.size());
-	m_fileEntries.erase(m_fileEntries.begin() + fileIndex);
-	m_filenames.erase(m_filenames.begin() + fileIndex);
-	m_header.filenameOffset = m_header.fileEntryOffset + sizeof(FileEntry) * m_fileEntries.size();
+	//hash table doesn't change until flush£¬so we don't remove entry here
+	m_fileEntries[fileIndex].flag |= FILE_FLAG_DELETED;
+	//assert(m_filenames.size() == m_fileEntries.size());
+	//m_fileEntries.erase(m_fileEntries.begin() + fileIndex);
+	//m_filenames.erase(m_filenames.begin() + fileIndex);
 	--m_header.fileCount;
+	m_header.filenameOffset = m_header.fileEntryOffset + sizeof(FileEntry) * m_header.fileCount;
 	m_dirty = true;
 	return true;
 }
@@ -182,10 +184,21 @@ void Package::flush()
 	}
 	//file entries
 	m_stream.seekg(m_header.fileEntryOffset, std::ios::beg);
-	for (u32 i = 0; i < m_fileEntries.size(); ++i)
+	assert(m_filenames.size() == m_fileEntries.size());
+	std::vector<std::string>::iterator nameIter = m_filenames.begin();
+	for (std::vector<FileEntry>::iterator iter = m_fileEntries.begin();
+		iter != m_fileEntries.end(); )
 	{
-		FileEntry& entry = m_fileEntries[i];
+		FileEntry& entry = *iter;
+		if ((entry.flag & FILE_FLAG_DELETED) != 0)
+		{
+			iter = m_fileEntries.erase(iter);
+			nameIter = m_filenames.erase(nameIter);
+			continue;
+		}
 		m_stream.write((char*)&entry, sizeof(FileEntry));
+		++iter;
+		++nameIter;
 	}
 	//filenames
 	assert(m_filenames.size() == m_fileEntries.size());
@@ -263,7 +276,7 @@ bool Package::defrag()
 		nextPos += entry.fileSize;
 	}
 	m_header.fileEntryOffset = nextPos;
-	m_header.filenameOffset = m_header.fileEntryOffset + m_header.fileCount * sizeof(FileEntry);
+	m_header.filenameOffset = m_header.fileEntryOffset + sizeof(FileEntry) * m_header.fileCount;
 	m_dirty = true;
 	flush();	//no need to rebuild hash table here, but it's ok b/c defrag will be slow anyway
 	//cut extra length of file
@@ -395,6 +408,10 @@ int Package::getFileIndex(const char* filename)
 		FileEntry& entry = m_fileEntries[fileIndex];
 		if (entry.hash0 == hash0 && entry.hash1 == hash1 && entry.hash2 == hash2)
 		{
+			if ((entry.flag & FILE_FLAG_DELETED) != 0)
+			{
+				return -1;
+			}
 			return fileIndex;
 		}
 		if (++hashIndex >= m_hashTable.size())
@@ -409,22 +426,26 @@ int Package::getFileIndex(const char* filename)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void Package::insertFile(FileEntry& entry, const char* filename)
 {
-	u32 fileIndex = 0;
 	u32 maxIndex = (u32)m_fileEntries.size();
 	u64 lastEnd = m_header.headerSize;
-	while (fileIndex < maxIndex)
+	for (u32 fileIndex = 0; fileIndex < maxIndex; ++fileIndex)
 	{
 		FileEntry& thisEntry = m_fileEntries[fileIndex];
+		if ((thisEntry.flag & FILE_FLAG_DELETED) != 0)
+		{
+			continue;
+		}
 		if (thisEntry.byteOffset - lastEnd >= entry.fileSize)
 		{
 			entry.byteOffset = lastEnd;
 			m_fileEntries.insert(m_fileEntries.begin() + fileIndex, entry);
 			m_filenames.insert(m_filenames.begin() + fileIndex, filename);
 			assert(m_filenames.size() == m_fileEntries.size());
+			//user may call addFile or removeFile before calling flush, so hash table need to be fixed
+			fixHashTable(fileIndex);
 			return;
 		}
 		lastEnd = thisEntry.byteOffset + thisEntry.fileSize;
-		++fileIndex;
 	}
 	if (m_fileEntries.empty())
 	{
@@ -451,6 +472,19 @@ u32 Package::stringHash(const char* str, u32 seed)
 		out = out * seed + tolower(*(str++));
 	}
 	return out;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+void Package::fixHashTable(u32 index)
+{
+	//increase file index which is greater than "index" by 1
+	for (u32 i = 0; i < m_hashTable.size(); ++i)
+	{
+		if (m_hashTable[i] >= (int)index)
+		{
+			++m_hashTable[i];
+		}
+	}
 }
 
 }
