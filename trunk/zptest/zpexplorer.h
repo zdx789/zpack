@@ -3,12 +3,13 @@
 
 #include <list>
 #include <string>
-#include "fileenum.h"
 
 namespace zp
 {
 class IPackage;
 }
+
+typedef bool (*FileCallback)(const std::string& path, size_t fileIndex, size_t totalFileCount);
 
 struct ZpNode
 {
@@ -20,11 +21,14 @@ struct ZpNode
 
 class ZpExplorer
 {
-	friend void WINAPI addPackFile(const std::string& filename, void* param);
+	friend bool addPackFile(const std::string& filename, void* param);
+	friend bool countFile(const std::string& filename, void* param);
 
 public:
 	ZpExplorer();
 	~ZpExplorer();
+
+	void setCallback(FileCallback callback);
 
 	bool open(const std::string& path);
 	bool create(const std::string& path, const std::string& inputPath);
@@ -40,7 +44,7 @@ public:
 
 	bool add(const std::string& path);
 	bool remove(const std::string& path);
-	bool extract(const std::string& name, const std::string& path);
+	bool extract(const std::string& filename, const std::string& path);
 
 	const ZpNode* getNode();
 
@@ -48,8 +52,13 @@ private:
 	void clear();
 
 	bool addFile(const std::string& filename, const std::string& archivedName);
+	bool extractFile(const std::string& filename, const std::string& archivedName);
 
-	void removeChildRecursively(ZpNode* node, const std::string& path);
+	void countChildRecursively(ZpNode* node);
+
+	bool removeChildRecursively(ZpNode* node, const std::string& path);
+
+	bool extractRecursively(ZpNode* node, const std::string& path, const std::string& pathInPack);
 
 	void insertFileToTree(const std::string& filename);
 
@@ -70,6 +79,10 @@ private:
 	ZpNode			m_root;
 	ZpNode*			m_currentNode;
 	std::string		m_currentPath;
+	FileCallback	m_callback;
+	std::string		m_basePath;
+	size_t			m_fileCount;
+	size_t			m_fileIndex;
 };
 
 #endif
