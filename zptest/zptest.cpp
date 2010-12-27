@@ -7,10 +7,11 @@
 #include "zpack.h"
 #include <cassert>
 #include <string>
+#include <sstream>
 #include <iostream>
 #include <map>
 #include "zpexplorer.h"
-#include "fileenum.h"
+//#include "fileenum.h"
 
 std::string getWord(const std::string& input, size_t& pos)
 {
@@ -27,11 +28,17 @@ std::string getWord(const std::string& input, size_t& pos)
 	return input.substr(start, pos - start);
 }
 
-typedef bool (WINAPI *CommandProc)(const std::string& param0, const std::string& param1);
+bool zpcallback(const std::string& path, size_t fileIndex, size_t totalFileCount)
+{
+	std::cout << path << std::endl;
+	return true;
+}
+
+typedef bool (*CommandProc)(const std::string& param0, const std::string& param1);
 
 std::map<std::string, CommandProc> g_commandHandlers;
 
-#define CMD_PROC(cmd) bool WINAPI cmd##_proc(const std::string& param0, const std::string& param1)
+#define CMD_PROC(cmd) bool cmd##_proc(const std::string& param0, const std::string& param1)
 #define REGISTER_CMD(cmd) g_commandHandlers[#cmd] = &cmd##_proc;
 
 std::string g_packName;
@@ -137,20 +144,14 @@ CMD_PROC(add)
 	return g_explorer.add(param0);
 }
 
-CMD_PROC(remove)
+CMD_PROC(del)
 {
 	return g_explorer.remove(param0);
 }
 
-CMD_PROC(flush)
+CMD_PROC(extract)
 {
-	zp::IPackage* pack = g_explorer.getPack();
-	if (pack == NULL)
-	{
-		return false;
-	}
-	pack->flush();
-	return true;
+	return g_explorer.extract(param0, param1);
 }
 
 CMD_PROC(fragment)
@@ -178,15 +179,15 @@ CMD_PROC(defrag)
 
 CMD_PROC(help)
 {
-	std::cout << "  create packetPath path" << std::endl;
-	std::cout << "  open path" << std::endl;
+	std::cout << "  create packagePath srcPath" << std::endl;
+	std::cout << "  open packagePath" << std::endl;
 	std::cout << "  close" << std::endl;
 	std::cout << "  list" << std::endl;
 	std::cout << "  cd path" << std::endl;
 	std::cout << "  dir" << std::endl;
-	std::cout << "  add path/dir" << std::endl;
-	std::cout << "  remove filename/dir" << std::endl;
-	std::cout << "  flush" << std::endl;
+	std::cout << "  add srcPath/srcDir" << std::endl;
+	std::cout << "  del file/dir" << std::endl;
+	std::cout << "  extract file/dir dstPath" << std::endl;
 	std::cout << "  fragment" << std::endl;
 	std::cout << "  defrag" << std::endl;
 	std::cout << "  exit" << std::endl;
@@ -194,13 +195,15 @@ CMD_PROC(help)
 }
 
 int _tmain(int argc, _TCHAR* argv[])
-{	
+{
+	g_explorer.setCallback(zpcallback);
+
 	REGISTER_CMD(exit);
 	REGISTER_CMD(create);
 	REGISTER_CMD(open);
 	REGISTER_CMD(add);
-	REGISTER_CMD(remove);
-	REGISTER_CMD(flush);
+	REGISTER_CMD(del);
+	REGISTER_CMD(extract);
 	REGISTER_CMD(close);
 	REGISTER_CMD(list);
 	REGISTER_CMD(dir);
@@ -229,10 +232,11 @@ int _tmain(int argc, _TCHAR* argv[])
 		std::getline(std::cin, input);
 
 		size_t pos = 0;
-		command = getWord(input, pos);
-		param0 = getWord(input, pos);
-		param1 = getWord(input, pos);
 
+		std::istringstream iss(input, std::istringstream::in);
+		iss >> command;
+		iss >> param0;
+		iss >> param1;
 		std::map<std::string, CommandProc>::iterator found = g_commandHandlers.find(command);
 		if (found == g_commandHandlers.end())
 		{
@@ -241,14 +245,6 @@ int _tmain(int argc, _TCHAR* argv[])
 		else if (!found->second(param0, param1))
 		{
 			std::cout << "<" << command << "> failed." << std::endl;
-		}
-		else
-		{
-			zp::IPackage* pack = g_explorer.getPack();
-			if (pack != NULL && pack->dirty())
-			{
-				pack->flush();
-			}
 		}
 	}
 	return 0;
