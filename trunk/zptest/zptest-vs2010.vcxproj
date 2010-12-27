@@ -14,7 +14,7 @@
     <ProjectGuid>{64EC7A26-97C8-4526-A29A-097D53D7C9B5}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>ptest</RootNamespace>
-    <ProjectName>zptest</ProjectName>
+    <ProjectName>zpcommand</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
