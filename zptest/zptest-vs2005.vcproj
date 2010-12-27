@@ -2,7 +2,7 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="8.00"
-	Name="zptest"
+	Name="zpcommand"
 	ProjectGUID="{FB87389B-C055-4D3E-8CED-410108B0A7CC}"
 	RootNamespace="zptest"
 	Keyword="Win32Proj"
@@ -175,6 +175,14 @@
 	<References>
 	</References>
 	<Files>
+		<File
+			RelativePath=".\fileenum.cpp"
+			>
+		</File>
+		<File
+			RelativePath=".\fileenum.h"
+			>
+		</File>
 		<File
 			RelativePath=".\zpexplorer.cpp"
 			>

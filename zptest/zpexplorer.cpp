@@ -65,7 +65,7 @@ bool ZpExplorer::create(const std::string& path, const std::string& inputPath)
 	if (!inputPath.empty())
 	{
 		m_basePath = inputPath;
-		if (m_basePath.back() != '/')
+		if (m_basePath.c_str()[m_basePath.length() - 1] != '/')
 		{
 			m_basePath += "/";
 		}
@@ -152,7 +152,7 @@ bool ZpExplorer::add(const std::string& filename)
 		m_basePath = filename.substr(0, pos + 1);
 	}
 	std::string searchDirectory = filename;
-	if (filename.back() != '/')
+	if (filename.c_str()[filename.length() - 1] != '/')
 	{
 		searchDirectory += "/";
 	}
@@ -195,7 +195,7 @@ bool ZpExplorer::extract(const std::string& filename, const std::string& path)
 		return false;
 	}
 	std::string externalPath = path;
-	if (externalPath.back() != '/')
+	if (externalPath.c_str()[externalPath.length() - 1] != '/')
 	{
 		externalPath += "/";
 	}
@@ -251,7 +251,7 @@ bool ZpExplorer::extractFile(const std::string& filename, const std::string& arc
 		return false;
 	}
 	std::fstream stream;
-	stream.open(filename, std::ios_base::out | std::ios_base::trunc | std::ios_base::binary);
+	stream.open(filename.c_str(), std::ios_base::out | std::ios_base::trunc | std::ios_base::binary);
 	if (!stream.is_open())
 	{
 		return false;
