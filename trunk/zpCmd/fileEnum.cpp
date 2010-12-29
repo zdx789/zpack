@@ -1,9 +1,9 @@
-#include "fileenum.h"
+#include "fileEnum.h"
 #include <string>
 #include <iostream>
 #include <cassert>
 #include "zpack.h"
-#include "zpexplorer.h"
+#include "zpExplorer.h"
 #include "windows.h"
 
 bool enumFile(const std::string& searchPath, EnumCallback callback, void* param)
