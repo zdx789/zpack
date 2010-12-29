@@ -1,7 +1,5 @@
 // ptest.cpp : Defines the entry point for the console application.
 //
-
-//#include <SDKDDKVer.h>
 #include <stdio.h>
 #include <tchar.h>
 #include "zpack.h"
@@ -10,25 +8,9 @@
 #include <sstream>
 #include <iostream>
 #include <map>
-#include "zpexplorer.h"
-//#include "fileenum.h"
+#include "zpExplorer.h"
 
 using namespace std;
-
-string getWord(const string& input, size_t& pos)
-{
-	size_t start = input.find_first_not_of(' ', pos);
-	if (start == string::npos)
-	{
-		start = pos;
-	}
-	pos = input.find_first_of(' ', start);
-	if (pos == string::npos)
-	{
-		pos = input.length();
-	}
-	return input.substr(start, pos - start);
-}
 
 bool zpcallback(const string& path, size_t fileIndex, size_t totalFileCount)
 {
@@ -76,32 +58,6 @@ CMD_PROC(close)
 {
 	g_packName.clear();
 	g_explorer.close();
-	return true;
-}
-
-CMD_PROC(list)
-{
-	zp::IPackage* pack = g_explorer.getPack();
-	if (pack == NULL)
-	{
-		return false;
-	}
-	size_t count = pack->getFileCount();
-	for (unsigned long i = 0; i < count; ++i)
-	{
-		char filename[256];
-		pack->getFilenameByIndex(filename, sizeof(filename), i);
-		zp::IFile* file = pack->openFile(filename);
-		if (file != NULL)
-		{
-			cout << filename << "[" << file->getSize() << "]" << endl;
-			pack->closeFile(file);
-		}
-		else
-		{
-			cout << filename << endl;
-		}
-	}
 	return true;
 }
 
@@ -185,7 +141,6 @@ CMD_PROC(help)
 	HELP_ITEM("create [package path] [initial dir path]", "create a package from scratch");
 	HELP_ITEM("open [package path]", "open an existing package");
 	HELP_ITEM("close", "close current package");
-	HELP_ITEM("list", "show all files in current package");
 	HELP_ITEM("cd [path]", "enter specified sub-directory of package");
 	HELP_ITEM("dir", "show all files and directories of current directory of package");
 	HELP_ITEM("add [file/directory path]", "add a disk file or directory to current directory of package");
@@ -208,7 +163,6 @@ int _tmain(int argc, _TCHAR* argv[])
 	REGISTER_CMD(del);
 	REGISTER_CMD(extract);
 	REGISTER_CMD(close);
-	REGISTER_CMD(list);
 	REGISTER_CMD(dir);
 	REGISTER_CMD(cd);
 	REGISTER_CMD(fragment);

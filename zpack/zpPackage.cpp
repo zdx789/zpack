@@ -1,5 +1,5 @@
-#include "zppackage.h"
-#include "zpfile.h"
+#include "zpPackage.h"
+#include "zpFile.h"
 #include <cassert>
 #include "io.h"
 

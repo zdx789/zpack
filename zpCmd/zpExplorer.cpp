@@ -1,9 +1,9 @@
-#include "zpexplorer.h"
+#include "zpExplorer.h"
 #include "zpack.h"
 #include <cassert>
 #include <fstream>
 #include <algorithm>
-#include "fileenum.h"
+#include "fileEnum.h"
 #include "windows.h"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
