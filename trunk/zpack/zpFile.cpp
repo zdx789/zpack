@@ -3,37 +3,50 @@
 namespace zp
 {
 
+File* File::s_lastSeek = NULL;
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-File::File(std::fstream& stream, unsigned __int64 offset, unsigned long size)
+File::File(std::fstream& stream, u64 offset, u32 size)
 	: m_stream(stream)
 	, m_offset(offset)
 	, m_size(size)
-	, m_pointer(0)
+	, m_readPos(0)
 {
+	m_stream.seekg(m_offset, std::ios::beg);
+	s_lastSeek = this;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-unsigned long File::getSize()
+u32 File::size()
 {
 	return m_size;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-void File::setPointer(unsigned long pos)
+void File::seek(u32 pos)
 {
-	m_pointer = pos;
+	if (pos != m_readPos || s_lastSeek != this)
+	{
+		m_readPos = pos;
+		m_stream.seekg(m_offset + m_readPos, std::ios::beg);
+		s_lastSeek = this;
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-unsigned long File::read(void* buffer, unsigned long size)
+u32 File::read(void* buffer, u32 size)
 {
-	if (m_pointer + size > m_size)
+	if (m_readPos + size > m_size)
 	{
-		size = m_size - m_pointer;
+		size = m_size - m_readPos;
 	}
-	m_stream.seekg(m_offset + m_pointer, std::ios::beg);
+	if (s_lastSeek != this)
+	{
+		m_stream.seekg(m_offset + m_readPos, std::ios::beg);
+		s_lastSeek = this;
+	}
 	m_stream.read((char*)buffer, size);
-	m_pointer += size;
+	m_readPos += size;
 	return size;
 }
 

@@ -30,7 +30,7 @@ bool enumFile(const std::string& searchPath, EnumCallback callback, void* param)
 		else if (strcmp(fd.cFileName, ".") != 0 && strcmp(fd.cFileName, "..")  != 0)
 		{
 			//folder
-			if (!enumFile(searchPath + fd.cFileName + "/", callback, param))
+			if (!enumFile(searchPath + fd.cFileName + DIR_STR, callback, param))
 			{
 				return false;
 			}

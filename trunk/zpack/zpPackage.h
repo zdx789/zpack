@@ -9,8 +9,6 @@
 namespace zp
 {
 
-typedef unsigned long u32;
-typedef unsigned __int64 u64;
 const u32 PACKAGE_FILE_SIGN = 'KAPZ';
 const u32 CURRENT_VERSION = '0010';
 

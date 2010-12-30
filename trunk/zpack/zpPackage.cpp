@@ -6,6 +6,8 @@
 namespace zp
 {
 
+const bool CASE_SENSITIVE = false;
+
 const u32 MIN_HASH_TABLE_SIZE = 256;
 const u32 MAX_HASH_TABLE_SIZE = 0x80000;
 const u32 HASH_SEED0 = 31;
@@ -469,7 +471,14 @@ u32 Package::stringHash(const char* str, u32 seed)
 	u32 out = 0;
 	while (*str)
 	{
-		out = out * seed + tolower(*(str++));
+		if (CASE_SENSITIVE)
+		{
+			out = out * seed + *(str++);
+		}
+		else
+		{
+			out = out * seed + tolower(*(str++));
+		}
 	}
 	return out;
 }
