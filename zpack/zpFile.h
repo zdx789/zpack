@@ -4,23 +4,26 @@
 #include "zpack.h"
 #include <fstream>
 
+#define FILE_CACHE_SIZE	4096
+
 namespace zp
 {
 
 class File : public IFile
 {
 public:
-	File(std::fstream& stream, unsigned __int64 offset, unsigned long size);
+	File(std::fstream& stream, u64 offset, u32 size);
 
-	virtual unsigned long getSize();
-	virtual void setPointer(unsigned long pos);
-	virtual unsigned long read(void* buffer, unsigned long size);
+	virtual u32 size();
+	virtual void seek(u32 pos);
+	virtual u32 read(void* buffer, u32 size);
 
 private:
-	std::fstream&		m_stream;
-	unsigned __int64	m_offset;
-	unsigned long		m_size;
-	unsigned long		m_pointer;
+	std::fstream&	m_stream;
+	u64				m_offset;
+	u32				m_size;
+	u32				m_readPos;
+	static File*	s_lastSeek;
 };
 
 }

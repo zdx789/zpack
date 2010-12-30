@@ -6,6 +6,8 @@
 #include "fileEnum.h"
 #include "windows.h"
 
+using namespace std;
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 ZpExplorer::ZpExplorer()
 	: m_pack(NULL)
@@ -34,7 +36,7 @@ void ZpExplorer::setCallback(FileCallback callback)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-bool ZpExplorer::open(const std::string& path)
+bool ZpExplorer::open(const string& path)
 {
 	clear();
 	m_pack = zp::open(path.c_str(), 0);
@@ -47,14 +49,14 @@ bool ZpExplorer::open(const std::string& path)
 	{
 		char buffer[256];
 		m_pack->getFilenameByIndex(buffer, sizeof(buffer), i);
-		std::string filename = buffer;
+		string filename = buffer;
 		insertFileToTree(filename);
 	}
 	return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-bool ZpExplorer::create(const std::string& path, const std::string& inputPath)
+bool ZpExplorer::create(const string& path, const string& inputPath)
 {
 	clear();
 	m_pack = zp::create(path.c_str());
@@ -65,9 +67,9 @@ bool ZpExplorer::create(const std::string& path, const std::string& inputPath)
 	if (!inputPath.empty())
 	{
 		m_basePath = inputPath;
-		if (m_basePath.c_str()[m_basePath.length() - 1] != '/')
+		if (m_basePath.c_str()[m_basePath.length() - 1] != DIR_CHAR)
 		{
-			m_basePath += "/";
+			m_basePath += DIR_STR;
 		}
 		enumFile(m_basePath, addPackFile, this);
 	}
@@ -93,68 +95,69 @@ zp::IPackage* ZpExplorer::getPack()
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-const std::string& ZpExplorer::getPath()
+const string& ZpExplorer::currentPath()
 {
 	return m_currentPath;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-void ZpExplorer::enterRoot()
-{
-	m_currentNode = &m_root;
-	updatePath();
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-void ZpExplorer::enter(const std::string& dir)
+bool ZpExplorer::enter(const string& path)
 {
 	assert(m_currentNode != NULL);
-	ZpNode* child = findChild(m_currentNode, dir, FIND_DIR);
-	if (child != NULL)
-	{
-		m_currentNode = child;
-		updatePath();
-	}
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-void ZpExplorer::exit()
-{
-	if (m_currentNode->parent != NULL)
-	{
-		m_currentNode = m_currentNode->parent;
-		updatePath();
-	}
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-bool ZpExplorer::add(const std::string& filename)
-{
-	if (m_pack == NULL || filename.empty())
+	ZpNode* child = findChildRecursively(m_currentNode, path, FIND_DIR);
+	if (child == NULL)
 	{
 		return false;
 	}
+	m_currentNode = child;
+	getPath(m_currentNode, m_currentPath);
+	return true;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+bool ZpExplorer::add(const string& srcPath, const string& dstPath)
+{
+	if (m_pack == NULL || srcPath.empty())
+	{
+		return false;
+	}
+	if (dstPath.empty())
+	{
+		m_workingPath = m_currentPath;
+	}
+	else if (dstPath[0] == DIR_CHAR)
+	{
+		m_workingPath = dstPath.substr(1, dstPath.length() - 1);
+	}
+	else
+	{
+		m_workingPath = m_currentPath + dstPath;
+	}
+	if (!m_workingPath.empty() && m_workingPath[m_workingPath.length() - 1] != DIR_CHAR)
+	{
+		m_workingPath += DIR_STR;
+	}
 	m_basePath.clear();
-	size_t pos = filename.rfind('/');
+	size_t pos = srcPath.rfind(DIR_CHAR);
 
 	WIN32_FIND_DATAA fd;
-	HANDLE findFile = ::FindFirstFileA(filename.c_str(), &fd);
+	HANDLE findFile = ::FindFirstFileA(srcPath.c_str(), &fd);
 	if (findFile != INVALID_HANDLE_VALUE && (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
 	{
 		//it's a file
-		std::string nakedFilename = filename.substr(pos + 1, filename.length() - pos - 1);
-		return addFile(filename, nakedFilename);
+		string nakedFilename = srcPath.substr(pos + 1, srcPath.length() - pos - 1);
+		return addFile(srcPath, nakedFilename);
 	}
 	//it's a directory
-	if (pos != std::string::npos)
+	if (pos != string::npos)
 	{
 		//dir
-		m_basePath = filename.substr(0, pos + 1);
+		m_basePath = srcPath.substr(0, pos + 1);
 	}
-	std::string searchDirectory = filename;
-	if (filename.c_str()[filename.length() - 1] != '/')
+	string searchDirectory = srcPath;
+	if (srcPath.c_str()[srcPath.length() - 1] != DIR_CHAR)
 	{
-		searchDirectory += "/";
+		searchDirectory += DIR_STR;
 	}
 	m_fileCount = 0;
 	m_fileIndex = 0;
@@ -165,11 +168,14 @@ bool ZpExplorer::add(const std::string& filename)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-bool ZpExplorer::remove(const std::string& filename)
+bool ZpExplorer::remove(const string& path)
 {
-	std::string archivedName = m_currentPath + filename;
-	std::list<ZpNode>::iterator found;
-	ZpNode* child = findChild(m_currentNode, filename, FIND_ANY, &found);
+	if (path.empty())
+	{
+		return false;
+	}
+	list<ZpNode>::iterator found;
+	ZpNode* child = findChildRecursively(m_currentNode, path, FIND_ANY);
 	if (child == NULL)
 	{
 		return false;
@@ -177,29 +183,45 @@ bool ZpExplorer::remove(const std::string& filename)
 	m_fileCount = 0;
 	m_fileIndex = 0;
 	countChildRecursively(child);
+
+	string internalPath;
+	getPath(child, internalPath);
+	//remove '\'
+	if (!internalPath.empty())
+	{
+		internalPath.resize(internalPath.size() - 1);
+	}
 	bool ret = false;
-	if (removeChildRecursively(child, m_currentPath))
+	if (removeChildRecursively(child, internalPath))
 	{
 		ret = true;
-		m_currentNode->children.erase(found);
+		if (child->parent != NULL)
+		{
+			if (child == m_currentNode)
+			{
+				m_currentNode = child->parent;
+			}
+			removeChild(child->parent, child);
+		}
 	}
+	getPath(m_currentNode, m_currentPath);
 	m_pack->flush();
 	return ret;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-bool ZpExplorer::extract(const std::string& filename, const std::string& path)
+bool ZpExplorer::extract(const string& srcPath, const string& dstPath)
 {
-	if (filename.empty() || path.empty())
+	string externalPath = dstPath;
+	if (externalPath.empty())
 	{
-		return false;
+		externalPath = "."DIR_STR;
 	}
-	std::string externalPath = path;
-	if (externalPath.c_str()[externalPath.length() - 1] != '/')
+	else if (externalPath.c_str()[externalPath.length() - 1] != DIR_CHAR)
 	{
-		externalPath += "/";
+		externalPath += DIR_STR;
 	}
-	ZpNode* child = findChild(m_currentNode, filename, FIND_ANY);
+	ZpNode* child = findChildRecursively(m_currentNode, srcPath, FIND_ANY);
 	if (child == NULL)
 	{
 		return false;
@@ -207,7 +229,15 @@ bool ZpExplorer::extract(const std::string& filename, const std::string& path)
 	m_fileCount = 0;
 	m_fileIndex = 0;
 	countChildRecursively(child);
-	return extractRecursively(child, externalPath, m_currentPath);
+
+	string internalPath;
+	getPath(child, internalPath);
+	//remove '\'
+	if (!internalPath.empty())
+	{
+		internalPath.resize(internalPath.size() - 1);
+	}
+	return extractRecursively(child, externalPath, internalPath);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -221,7 +251,7 @@ void ZpExplorer::clear()
 {
 	m_root.children.clear();
 	m_currentNode = &m_root;
-	updatePath();
+	getPath(m_currentNode, m_currentPath);
 	if (m_pack != NULL)
 	{
 		zp::close(m_pack);
@@ -230,35 +260,35 @@ void ZpExplorer::clear()
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-bool ZpExplorer::addFile(const std::string& filename, const std::string& relativePath)
+bool ZpExplorer::addFile(const string& filename, const string& relativePath)
 {
-	std::string archivedName = m_currentPath + relativePath;
-	if (!m_pack->addFile(filename.c_str(), archivedName.c_str()))
+	string internalName = m_workingPath + relativePath;
+	if (!m_pack->addFile(filename.c_str(), internalName.c_str()))
 	{
 		return false;
 	}
-	insertFileToTree(relativePath);
+	insertFileToTree(internalName);
 	return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-bool ZpExplorer::extractFile(const std::string& filename, const std::string& archivedName)
+bool ZpExplorer::extractFile(const string& externalPath, const string& internalPath)
 {
 	assert(m_pack != NULL);
-	zp::IFile* file = m_pack->openFile(archivedName.c_str());
+	zp::IFile* file = m_pack->openFile(internalPath.c_str());
 	if (file == NULL)
 	{
 		return false;
 	}
-	std::fstream stream;
-	stream.open(filename.c_str(), std::ios_base::out | std::ios_base::trunc | std::ios_base::binary);
+	fstream stream;
+	stream.open(externalPath.c_str(), ios_base::out | ios_base::trunc | ios_base::binary);
 	if (!stream.is_open())
 	{
 		return false;
 	}
-	char* buffer = new char[file->getSize()];
-	file->read(buffer, file->getSize());
-	stream.write(buffer, file->getSize());
+	char* buffer = new char[file->size()];
+	file->read(buffer, file->size());
+	stream.write(buffer, file->size());
 	stream.close();
 	m_pack->closeFile(file);
 	delete [] buffer;
@@ -272,7 +302,7 @@ void ZpExplorer::countChildRecursively(ZpNode* node)
 	{
 		++m_fileCount;
 	}
-	for (std::list<ZpNode>::iterator iter = node->children.begin();
+	for (list<ZpNode>::iterator iter = node->children.begin();
 		iter != node->children.end();
 		++iter)
 	{
@@ -281,13 +311,32 @@ void ZpExplorer::countChildRecursively(ZpNode* node)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-bool ZpExplorer::removeChildRecursively(ZpNode* node, const std::string& path)
+bool ZpExplorer::removeChild(ZpNode* node, ZpNode* child)
+{
+	assert(node != NULL && child != NULL);
+	for (list<ZpNode>::iterator iter = node->children.begin();
+		iter != node->children.end();
+		++iter)
+	{
+		if (child == &(*iter))
+		{
+			node->children.erase(iter);
+			return true;
+		}
+	}
+	return false;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+bool ZpExplorer::removeChildRecursively(ZpNode* node, string path)
 {
 	assert(node != NULL && m_pack != NULL);
-	std::string currentPath = path + node->name;
 	if (!node->isDirectory)
 	{
-		m_pack->removeFile(currentPath.c_str());
+		if (!m_pack->removeFile(path.c_str()))
+		{
+			return false;
+		}
 		++m_fileIndex;
 		if (m_callback != NULL && !m_callback(node->name, m_fileIndex, m_fileCount))
 		{
@@ -295,14 +344,23 @@ bool ZpExplorer::removeChildRecursively(ZpNode* node, const std::string& path)
 		}
 		return true;
 	}
-	currentPath += "/";
+	if (!path.empty())
+	{
+		path += DIR_STR;
+	}
 	//recurse
-	for (std::list<ZpNode>::iterator iter = node->children.begin();
+	for (list<ZpNode>::iterator iter = node->children.begin();
 		iter != node->children.end();)
 	{
-		if (!removeChildRecursively(&(*iter), currentPath))
+		ZpNode* child = &(*iter);
+		if (!removeChildRecursively(child, path + child->name))
 		{
 			return false;
+		}
+		if (child == m_currentNode)
+		{
+			m_currentNode = m_currentNode->parent;
+			assert(m_currentNode != NULL);
 		}
 		iter = node->children.erase(iter);
 	}
@@ -310,43 +368,48 @@ bool ZpExplorer::removeChildRecursively(ZpNode* node, const std::string& path)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-bool ZpExplorer::extractRecursively(ZpNode* node, const std::string& path, const std::string& pathInPack)
+bool ZpExplorer::extractRecursively(ZpNode* node, string externalPath, string internalPath)
 {
 	assert(node != NULL && m_pack != NULL);
-	std::string currentPath = path + node->name;
-	std::string currentPathInPack = pathInPack + node->name;
+	externalPath += node->name;
 	if (!node->isDirectory)
 	{
-		if (!extractFile(currentPath, currentPathInPack))
+		if (!extractFile(externalPath, internalPath))
 		{
 			return false;
 		}
 		++m_fileIndex;
-		if (m_callback != NULL && !m_callback(currentPath, m_fileIndex, m_fileCount))
+		if (m_callback != NULL && !m_callback(externalPath, m_fileIndex, m_fileCount))
 		{
 			return false;
 		}
 		return true;
 	}
-	currentPath += "/";
-	currentPathInPack += "/";
-	//create directory if necessary
-	WIN32_FIND_DATAA fd;
-	HANDLE findFile = ::FindFirstFileA(currentPath.c_str(), &fd);
-	if (findFile == INVALID_HANDLE_VALUE)
+	if (!internalPath.empty())	//in case extract the root directory
 	{
-		::CreateDirectoryA(currentPath.c_str(), NULL);
-	}
-	else if ((fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
-	{
-		return false;
+		externalPath += DIR_STR;
+		internalPath += DIR_STR;
+		//create directory if necessary
+		WIN32_FIND_DATAA fd;
+		HANDLE findFile = ::FindFirstFileA(externalPath.c_str(), &fd);
+		if (findFile == INVALID_HANDLE_VALUE)
+		{
+			if (!::CreateDirectoryA(externalPath.c_str(), NULL))
+			{
+				return false;
+			}
+		}
+		else if ((fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
+		{
+			return false;
+		}
 	}
 	//recurse
-	for (std::list<ZpNode>::iterator iter = node->children.begin();
+	for (list<ZpNode>::iterator iter = node->children.begin();
 		iter != node->children.end();
 		++iter)
 	{
-		if (!extractRecursively(&(*iter), currentPath, currentPathInPack))
+		if (!extractRecursively(&(*iter), externalPath, internalPath + iter->name))
 		{
 			return false;
 		}
@@ -355,14 +418,14 @@ bool ZpExplorer::extractRecursively(ZpNode* node, const std::string& path, const
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-void ZpExplorer::insertFileToTree(const std::string& filename)
+void ZpExplorer::insertFileToTree(const string& filename)
 {
-	ZpNode* node = m_currentNode;
-	std::string filenameLeft = filename;
+	ZpNode* node = &m_root;
+	string filenameLeft = filename;
 	while (filenameLeft.length() > 0)
 	{
-		size_t pos = filenameLeft.find_first_of("/");
-		if (pos == std::string::npos)
+		size_t pos = filenameLeft.find_first_of(DIR_STR);
+		if (pos == string::npos)
 		{
 			ZpNode newNode;
 			newNode.parent = node;
@@ -371,7 +434,7 @@ void ZpExplorer::insertFileToTree(const std::string& filename)
 			node->children.push_back(newNode);
 			return;
 		}
-		std::string dirName = filenameLeft.substr(0, pos);
+		string dirName = filenameLeft.substr(0, pos);
 		filenameLeft = filenameLeft.substr(pos + 1, filenameLeft.length() - pos - 1);
 		ZpNode* child = findChild(node, dirName, FIND_DIR);
 		if (child != NULL)
@@ -391,12 +454,27 @@ void ZpExplorer::insertFileToTree(const std::string& filename)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-ZpNode* ZpExplorer::findChild(ZpNode* node, const std::string& name, FindType type, std::list<ZpNode>::iterator* returnIter)
+ZpNode* ZpExplorer::findChild(ZpNode* node, const string& name, FindType type)
 {
+	if (name.empty())
+	{
+		return  type == FIND_FILE ? NULL : &m_root;
+	}
 	assert(node != NULL);
-	std::string lowerName = name;
-	std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), ::tolower);
-	for (std::list<ZpNode>::iterator iter = node->children.begin();
+	if (name == ".")
+	{
+		return type == FIND_FILE ? NULL : node;
+	}
+	else if (name == "..")
+	{
+		return type == FIND_FILE ? NULL : node->parent;
+	}
+	string lowerName = name;
+	if (!zp::CASE_SENSITIVE)
+	{
+		transform(lowerName.begin(), lowerName.end(), lowerName.begin(), ::tolower);
+	}
+	for (list<ZpNode>::iterator iter = node->children.begin();
 		iter != node->children.end();
 		++iter)
 	{
@@ -404,14 +482,13 @@ ZpNode* ZpExplorer::findChild(ZpNode* node, const std::string& name, FindType ty
 		{
 			continue;
 		}
-		std::string dirName = iter->name;
-		std::transform(dirName.begin(), dirName.end(), dirName.begin(), ::tolower);
+		string dirName = iter->name;
+		if (!zp::CASE_SENSITIVE)
+		{
+			transform(dirName.begin(), dirName.end(), dirName.begin(), ::tolower);
+		}
 		if (dirName == lowerName)
 		{
-			if (returnIter != NULL)
-			{
-				*returnIter = iter;
-			}
 			return &(*iter);
 		}
 	}
@@ -419,13 +496,32 @@ ZpNode* ZpExplorer::findChild(ZpNode* node, const std::string& name, FindType ty
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-void ZpExplorer::updatePath()
+ZpNode* ZpExplorer::findChildRecursively(ZpNode* node, const string& name, FindType type)
 {
-	m_currentPath.clear();
-	ZpNode* node = m_currentNode;
-	while (node != &m_root)
+	size_t pos = name.find_first_of(DIR_STR);
+	if (pos == string::npos)
 	{
-		m_currentPath = node->name + "/" + m_currentPath;
+		//doesn't have any directory name
+		return name.empty()? node : findChild(node, name, type);
+	}
+	ZpNode* nextNode = NULL;
+	string dirName = name.substr(0, pos);
+	nextNode = findChild(node, dirName, FIND_DIR);
+	if (nextNode == NULL)
+	{
+		return NULL;
+	}
+	string nameLeft = name.substr(pos + 1, name.length() - pos - 1);
+	return findChildRecursively(nextNode, nameLeft, type);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+void ZpExplorer::getPath(const ZpNode* node, std::string& path)
+{
+	path.clear();
+	while (node != NULL && node != &m_root)
+	{
+		path = node->name + DIR_STR + path;
 		node = node->parent;
 	}
 }

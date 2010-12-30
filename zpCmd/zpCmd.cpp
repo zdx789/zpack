@@ -82,24 +82,12 @@ CMD_PROC(dir)
 
 CMD_PROC(cd)
 {
-	if (param0 == "..")
-	{
-		g_explorer.exit();
-	}
-	else if (param0 == "/")
-	{
-		g_explorer.enterRoot();
-	}
-	else
-	{
-		g_explorer.enter(param0);
-	}
-	return true;
+	return g_explorer.enter(param0);
 }
 
 CMD_PROC(add)
 {
-	return g_explorer.add(param0);
+	return g_explorer.add(param0, param1);
 }
 
 CMD_PROC(del)
@@ -177,7 +165,7 @@ int _tmain(int argc, _TCHAR* argv[])
 			cout << g_packName;
 			if (g_explorer.isOpen())
 			{
-				cout << "/" << g_explorer.getPath();
+				cout << DIR_STR << g_explorer.currentPath() << "\b";	//delete extra '\'
 			}
 			cout << ">";
 		}
@@ -201,7 +189,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 		else if (!found->second(param0, param1))
 		{
-			cout << "<" << command << "> failed." << endl;
+			cout << "<" << command << "> execute failed." << endl;
 		}
 	}
 	return 0;
