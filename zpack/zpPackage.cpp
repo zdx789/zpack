@@ -1,7 +1,6 @@
 #include "zpPackage.h"
 #include "zpFile.h"
 #include <cassert>
-#include "io.h"
 
 namespace zp
 {
@@ -10,16 +9,18 @@ const bool CASE_SENSITIVE = false;
 
 const u32 MIN_HASH_TABLE_SIZE = 256;
 const u32 MAX_HASH_TABLE_SIZE = 0x80000;
-const u32 HASH_SEED0 = 31;
+const u32 HASH_SEED0 = 31;	//not a good idea to change these numbers, must be identical between reading and writing code
 const u32 HASH_SEED1 = 131;
 const u32 HASH_SEED2 = 1313;
+
+using namespace std;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 Package::Package(const char* filename, bool readonly)
 	: m_readonly(readonly)
 	, m_dirty(false)
 {
-	m_stream.open(filename, std::ios_base::in | std::ios_base::out | std::ios_base::binary);
+	m_stream.open(filename, ios_base::in | ios_base::out | ios_base::binary);
 	if (!m_stream.is_open()
 		|| !readHeader()
 		|| !readFileEntries()
@@ -109,8 +110,8 @@ bool Package::addFile(const char* externalFilename, const char* filename, u32 fl
 	{
 		return false;
 	}
-	std::fstream stream;
-	stream.open(externalFilename, std::ios_base::in | std::ios_base::binary);
+	fstream stream;
+	stream.open(externalFilename, ios_base::in | ios_base::binary);
 	if (!stream.is_open())
 	{
 		return false;
@@ -129,16 +130,16 @@ bool Package::addFile(const char* externalFilename, const char* filename, u32 fl
 	entry.hash0 = stringHash(filename, HASH_SEED0);
 	entry.hash1 = stringHash(filename, HASH_SEED1);
 	entry.hash2 = stringHash(filename, HASH_SEED2);
-	stream.seekg(0, std::ios::end);
+	stream.seekg(0, ios::end);
 	entry.fileSize = static_cast<u32>(stream.tellg());
 	void* content = new unsigned char[entry.fileSize];
-	stream.seekg(0, std::ios::beg);
+	stream.seekg(0, ios::beg);
 	stream.read((char*)content, entry.fileSize);
 	stream.close();
 
 	insertFile(entry, filename);
 
-	m_stream.seekg(entry.byteOffset, std::ios::beg);
+	m_stream.seekg(entry.byteOffset, ios::beg);
 	m_stream.write((char*)content, entry.fileSize);
 	delete[] content;
 
@@ -185,10 +186,10 @@ void Package::flush()
 		return;
 	}
 	//file entries
-	m_stream.seekg(m_header.fileEntryOffset, std::ios::beg);
+	m_stream.seekg(m_header.fileEntryOffset, ios::beg);
 	assert(m_filenames.size() == m_fileEntries.size());
-	std::vector<std::string>::iterator nameIter = m_filenames.begin();
-	for (std::vector<FileEntry>::iterator iter = m_fileEntries.begin();
+	vector<string>::iterator nameIter = m_filenames.begin();
+	for (vector<FileEntry>::iterator iter = m_fileEntries.begin();
 		iter != m_fileEntries.end(); )
 	{
 		FileEntry& entry = *iter;
@@ -207,12 +208,12 @@ void Package::flush()
 	m_header.filenameSize = 0;
 	for (u32 i = 0; i < m_filenames.size(); ++i)
 	{
-		const std::string& filename = m_filenames[i];
+		const string& filename = m_filenames[i];
 		m_stream.write(filename.c_str(), (u32)filename.length());
 		m_stream.write("\n", 1);
 		m_header.filenameSize += ((u32)filename.length() + 1);
 	}
-	m_stream.seekg(0, std::ios::beg);
+	m_stream.seekg(0, ios::beg);
 	m_stream.write((char*)&m_header, sizeof(m_header));
 	m_stream.flush();
 	buildHashTable();
@@ -249,7 +250,7 @@ u64 Package::countFragmentSize(u64& bytesToMove)
 	{
 		bytesToMove += (m_header.fileCount * m_header.fileEntrySize + m_header.filenameSize);
 	}
-	m_stream.seekg(0, std::ios::end);
+	m_stream.seekg(0, ios::end);
 	u64 currentSize = m_stream.tellg();
 	return currentSize - totalSize;
 }
@@ -261,36 +262,75 @@ bool Package::defrag()
 	{
 		return false;
 	}
-	std::vector<char> tempBuffer;
-	u64 nextPos = m_header.headerSize;
-	for (u32 i = 0; i < m_fileEntries.size(); ++i)
-	{
-		FileEntry& entry = m_fileEntries[i];
-		if (entry.byteOffset != nextPos)
-		{
-			tempBuffer.resize(entry.fileSize);
-			m_stream.seekg(entry.byteOffset, std::ios::beg);
-			m_stream.read(&tempBuffer[0], entry.fileSize);
-			m_stream.seekg(nextPos, std::ios::beg);
-			m_stream.write(&tempBuffer[0], entry.fileSize);
-			entry.byteOffset = nextPos;
-		}
-		nextPos += entry.fileSize;
-	}
-	m_header.fileEntryOffset = nextPos;
-	m_header.filenameOffset = m_header.fileEntryOffset + sizeof(FileEntry) * m_header.fileCount;
-	m_dirty = true;
-	flush();	//no need to rebuild hash table here, but it's ok b/c defrag will be slow anyway
-	//cut extra length of file
-	m_stream.close();
-	FILE* fd = fopen(m_packageName.c_str(), "a+b");
-	if (fd == NULL)
+	string tempFilename = m_packageName + "_t";
+	fstream tempFile;
+	tempFile.open(tempFilename, std::ios_base::out | std::ios_base::trunc | std::ios_base::binary);
+	if (!tempFile.is_open())
 	{
 		return false;
 	}
-	_chsize_s(_fileno(fd), m_header.filenameOffset + m_header.filenameSize);
-	fclose(fd);
-	m_stream.open(m_packageName.c_str(), std::ios_base::in | std::ios_base::out | std::ios_base::binary);
+	tempFile.seekg(sizeof(m_header), ios::beg);
+
+	vector<char> tempBuffer;
+	u64 nextPos = m_header.headerSize;
+	//write as chunk instead of file, to speed up
+	const u32 MIN_CHUNK_SIZE = 0x100000;
+	u64 currentChunkPos = nextPos;
+	u64 fragmentSize = 0;
+	u32 currentChunkSize = 0;
+	for (u32 i = 0; i < m_fileEntries.size(); ++i)
+	{
+		FileEntry& entry = m_fileEntries[i];
+		if (entry.fileSize == 0)
+		{
+			entry.byteOffset = nextPos;
+			continue;
+		}
+		if ((entry.flag & FILE_FLAG_DELETED) != 0)
+		{
+			continue;
+		}
+		if (entry.byteOffset != fragmentSize + nextPos	//new fragment encountered
+			|| currentChunkSize > MIN_CHUNK_SIZE)
+		{
+			if (currentChunkSize > 0)
+			{
+				tempBuffer.resize(currentChunkSize);
+				m_stream.seekg(currentChunkPos, ios::beg);
+				m_stream.read(&tempBuffer[0], currentChunkSize);
+				tempFile.write(&tempBuffer[0], currentChunkSize);
+			}
+			fragmentSize = entry.byteOffset - nextPos;
+			currentChunkPos = entry.byteOffset;
+			currentChunkSize = 0;
+		}
+		entry.byteOffset = nextPos;
+		nextPos += entry.fileSize;
+		currentChunkSize += entry.fileSize;
+	}
+	//one chunk may be left
+	if (currentChunkSize > 0)
+	{
+		tempBuffer.resize(currentChunkSize);
+		m_stream.seekg(currentChunkPos, ios::beg);
+		m_stream.read(&tempBuffer[0], currentChunkSize);
+		tempFile.write(&tempBuffer[0], currentChunkSize);
+	}
+	m_header.fileEntryOffset = nextPos;
+	m_header.filenameOffset = m_header.fileEntryOffset + sizeof(FileEntry) * m_header.fileCount;
+
+	m_stream.close();
+	tempFile.close();
+
+	m_stream.open(tempFilename, ios_base::in | ios_base::out | ios_base::binary);	//only for flush()
+	assert(m_stream.is_open());
+	m_dirty = true;
+	flush();	//no need to rebuild hash table here, but it's ok b/c defrag will be slow anyway
+	m_stream.close();
+
+	remove(m_packageName.c_str());
+	rename(tempFilename.c_str(), m_packageName.c_str());
+	m_stream.open(m_packageName.c_str(), ios_base::in | ios_base::out | ios_base::binary);
 	assert(m_stream.is_open());
 	return true;
 }
@@ -298,13 +338,13 @@ bool Package::defrag()
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool Package::readHeader()
 {
-	m_stream.seekg(0, std::ios::end);
+	m_stream.seekg(0, ios::end);
 	u64 packageSize = m_stream.tellg();
 	if (packageSize < sizeof(PackageHeader))
 	{
 		return false;
 	}
-	m_stream.seekg(0, std::ios::beg);
+	m_stream.seekg(0, ios::beg);
 	m_stream.read((char*)&m_header, sizeof(PackageHeader));
 	if (m_header.sign != PACKAGE_FILE_SIGN
 		|| m_header.headerSize < sizeof(PackageHeader)
@@ -326,7 +366,7 @@ bool Package::readHeader()
 bool Package::readFileEntries()
 {
 	m_fileEntries.resize(m_header.fileCount);
-	m_stream.seekg(m_header.fileEntryOffset, std::ios::beg);
+	m_stream.seekg(m_header.fileEntryOffset, ios::beg);
 	u32 extraDataSize = m_header.fileEntrySize - sizeof(FileEntry);
 
 	u64 nextOffset = m_header.headerSize;
@@ -345,7 +385,7 @@ bool Package::readFileEntries()
 		nextOffset = entry.byteOffset + entry.fileSize;
 		if (extraDataSize > 0)
 		{
-			m_stream.seekg(extraDataSize, std::ios::cur);
+			m_stream.seekg(extraDataSize, ios::cur);
 		}
 	}
 	return true;
@@ -359,10 +399,10 @@ bool Package::readFilenames()
 		return true;
 	}
 	m_filenames.resize(m_fileEntries.size());
-	m_stream.seekg(m_header.filenameOffset, std::ios::beg);
+	m_stream.seekg(m_header.filenameOffset, ios::beg);
 	for (u32 i = 0; i < m_fileEntries.size(); ++i)
 	{
-		std::getline(m_stream, m_filenames[i]);
+		getline(m_stream, m_filenames[i]);
 	}
 	return true;
 }

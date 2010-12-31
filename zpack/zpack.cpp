@@ -28,7 +28,10 @@ IPackage* create(const char* filename, u32 flag)
 {
 	std::fstream stream;
 	stream.open(filename, std::ios_base::out | std::ios_base::trunc | std::ios_base::binary);
-
+	if (!stream.is_open())
+	{
+		return NULL;
+	}
 	PackageHeader header;
 	header.sign = PACKAGE_FILE_SIGN;
 	header.version = CURRENT_VERSION;
