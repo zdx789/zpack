@@ -129,11 +129,11 @@ CMD_PROC(help)
 	HELP_ITEM("create [package path] [initial dir path]", "create a package from scratch");
 	HELP_ITEM("open [package path]", "open an existing package");
 	HELP_ITEM("close", "close current package");
-	HELP_ITEM("cd [path]", "enter specified sub-directory of package");
-	HELP_ITEM("dir", "show all files and directories of current directory of package");
-	HELP_ITEM("add [file/directory path]", "add a disk file or directory to current directory of package");
-	HELP_ITEM("del [file/directory", "delete a file or sub-directory from current directory of package");
-	HELP_ITEM("extract [file/directory path", "extrace a file or sub-directory to disk from current directory of package");
+	HELP_ITEM("cd [internal path]", "enter specified directory of package");
+	HELP_ITEM("dir", "show files and sub-directories of current directory of package");
+	HELP_ITEM("add [soure path] [dest path]", "add a disk file or directory to package");
+	HELP_ITEM("del [internal path]", "delete a file or directory from package");
+	HELP_ITEM("extract [source path] [dest path]", "extrace file or directories to disk");
 	HELP_ITEM("fragment", "calculate fragment bytes and how many bytes to move to defrag");
 	HELP_ITEM("defrag", "compact file, remove all fragments");
 	HELP_ITEM("exit", "exit program");
@@ -157,7 +157,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	REGISTER_CMD(defrag);
 	REGISTER_CMD(help);
 
-	cout << "please type <help> to checkout commands available." << endl;
+	cout << "please type <help>" << endl;
 	while (true)
 	{
 		if (!g_packName.empty())
