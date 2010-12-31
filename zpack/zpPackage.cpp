@@ -332,7 +332,7 @@ bool Package::readFileEntries()
 	u64 nextOffset = m_header.headerSize;
 	for (u32 i = 0; i < m_header.fileCount; ++i)
 	{
-		if (nextOffset >= m_header.fileEntryOffset)
+		if (nextOffset > m_header.fileEntryOffset)
 		{
 			return false;
 		}

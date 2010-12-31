@@ -59,18 +59,29 @@ bool ZpExplorer::open(const string& path)
 bool ZpExplorer::create(const string& path, const string& inputPath)
 {
 	clear();
+	if (path.empty())
+	{
+		return false;
+	}
 	m_pack = zp::create(path.c_str());
 	if (m_pack == NULL)
 	{
 		return false;
 	}
-	if (!inputPath.empty())
+	if (inputPath.empty())
 	{
-		m_basePath = inputPath;
-		if (m_basePath.c_str()[m_basePath.length() - 1] != DIR_CHAR)
-		{
-			m_basePath += DIR_STR;
-		}
+		return true;
+	}
+	m_basePath = inputPath;
+	if (m_basePath.c_str()[m_basePath.length() - 1] != DIR_CHAR)
+	{
+		m_basePath += DIR_STR;
+	}
+	m_fileCount = 0;
+	m_fileIndex = 0;
+	enumFile(m_basePath, countFile, this);
+	if (m_fileCount > 0)
+	{
 		enumFile(m_basePath, addPackFile, this);
 	}
 	return true;
@@ -162,6 +173,10 @@ bool ZpExplorer::add(const string& srcPath, const string& dstPath)
 	m_fileCount = 0;
 	m_fileIndex = 0;
 	enumFile(searchDirectory, countFile, this);
+	if (m_fileCount == 0)
+	{
+		return false;
+	}
 	enumFile(searchDirectory, addPackFile, this);
 	m_pack->flush();
 	return true;
@@ -183,7 +198,10 @@ bool ZpExplorer::remove(const string& path)
 	m_fileCount = 0;
 	m_fileIndex = 0;
 	countChildRecursively(child);
-
+	if (m_fileCount == 0)
+	{
+		return false;
+	}
 	string internalPath;
 	getPath(child, internalPath);
 	//remove '\'
@@ -229,7 +247,10 @@ bool ZpExplorer::extract(const string& srcPath, const string& dstPath)
 	m_fileCount = 0;
 	m_fileIndex = 0;
 	countChildRecursively(child);
-
+	if (m_fileCount == 0)
+	{
+		return false;
+	}
 	string internalPath;
 	getPath(child, internalPath);
 	//remove '\'
@@ -252,6 +273,7 @@ void ZpExplorer::clear()
 	m_root.children.clear();
 	m_currentNode = &m_root;
 	getPath(m_currentNode, m_currentPath);
+	m_workingPath = m_currentPath;
 	if (m_pack != NULL)
 	{
 		zp::close(m_pack);
@@ -427,11 +449,16 @@ void ZpExplorer::insertFileToTree(const string& filename)
 		size_t pos = filenameLeft.find_first_of(DIR_STR);
 		if (pos == string::npos)
 		{
-			ZpNode newNode;
-			newNode.parent = node;
-			newNode.isDirectory = false;
-			newNode.name = filenameLeft;
-			node->children.push_back(newNode);
+			//it's a file
+			ZpNode* child = findChild(node, filenameLeft, FIND_FILE);
+			if (child == NULL)
+			{
+				ZpNode newNode;
+				newNode.parent = node;
+				newNode.isDirectory = false;
+				newNode.name = filenameLeft;
+				node->children.push_back(newNode);
+			}
 			return;
 		}
 		string dirName = filenameLeft.substr(0, pos);
