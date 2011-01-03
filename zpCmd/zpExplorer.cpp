@@ -44,6 +44,7 @@ bool ZpExplorer::open(const string& path)
 	{
 		return false;
 	}
+	m_packageFilename = path;
 	unsigned long count = m_pack->getFileCount();
 	for (unsigned long i = 0; i < count; ++i)
 	{
@@ -94,7 +95,7 @@ void ZpExplorer::close()
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-bool ZpExplorer::isOpen()
+bool ZpExplorer::isOpen() const
 {
 	return (m_pack != NULL);
 }
@@ -106,13 +107,19 @@ zp::IPackage* ZpExplorer::getPack()
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-const string& ZpExplorer::currentPath()
+const std::string& ZpExplorer::packageFilename() const
+{
+	return m_packageFilename;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+const string& ZpExplorer::currentPath() const
 {
 	return m_currentPath;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-bool ZpExplorer::enter(const string& path)
+bool ZpExplorer::enterDir(const string& path)
 {
 	assert(m_currentNode != NULL);
 	ZpNode* child = findChildRecursively(m_currentNode, path, FIND_DIR);
@@ -121,7 +128,7 @@ bool ZpExplorer::enter(const string& path)
 		return false;
 	}
 	m_currentNode = child;
-	getPath(m_currentNode, m_currentPath);
+	getNodePath(m_currentNode, m_currentPath);
 	return true;
 }
 
@@ -203,7 +210,7 @@ bool ZpExplorer::remove(const string& path)
 		return false;
 	}
 	string internalPath;
-	getPath(child, internalPath);
+	getNodePath(child, internalPath);
 	//remove '\'
 	if (!internalPath.empty())
 	{
@@ -222,7 +229,7 @@ bool ZpExplorer::remove(const string& path)
 			removeChild(child->parent, child);
 		}
 	}
-	getPath(m_currentNode, m_currentPath);
+	getNodePath(m_currentNode, m_currentPath);
 	m_pack->flush();
 	return ret;
 }
@@ -252,7 +259,7 @@ bool ZpExplorer::extract(const string& srcPath, const string& dstPath)
 		return false;
 	}
 	string internalPath;
-	getPath(child, internalPath);
+	getNodePath(child, internalPath);
 	//remove '\'
 	if (!internalPath.empty())
 	{
@@ -262,9 +269,22 @@ bool ZpExplorer::extract(const string& srcPath, const string& dstPath)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-const ZpNode* ZpExplorer::getNode()
+void ZpExplorer::setCurrentNode(const ZpNode* node)
+{
+	m_currentNode = const_cast<ZpNode*>(node);
+	getNodePath(m_currentNode, m_currentPath);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+const ZpNode* ZpExplorer::currentNode() const
 {
 	return m_currentNode;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+const ZpNode* ZpExplorer::rootNode() const
+{
+	return &m_root;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -272,7 +292,7 @@ void ZpExplorer::clear()
 {
 	m_root.children.clear();
 	m_currentNode = &m_root;
-	getPath(m_currentNode, m_currentPath);
+	getNodePath(m_currentNode, m_currentPath);
 	m_workingPath = m_currentPath;
 	if (m_pack != NULL)
 	{
@@ -543,7 +563,7 @@ ZpNode* ZpExplorer::findChildRecursively(ZpNode* node, const string& name, FindT
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-void ZpExplorer::getPath(const ZpNode* node, std::string& path)
+void ZpExplorer::getNodePath(const ZpNode* node, std::string& path) const
 {
 	path.clear();
 	while (node != NULL && node != &m_root)
