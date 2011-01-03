@@ -25,7 +25,6 @@ map<string, CommandProc> g_commandHandlers;
 #define CMD_PROC(cmd) bool cmd##_proc(const string& param0, const string& param1)
 #define REGISTER_CMD(cmd) g_commandHandlers[#cmd] = &cmd##_proc;
 
-string g_packName;
 ZpExplorer g_explorer;
 
 CMD_PROC(exit)
@@ -36,34 +35,23 @@ CMD_PROC(exit)
 
 CMD_PROC(open)
 {
-	if (g_explorer.open(param0))
-	{
-		g_packName = param0;
-		return true;
-	}
-	return false;
+	return g_explorer.open(param0);
 }
 
 CMD_PROC(create)
 {
-	if (g_explorer.create(param0, param1))
-	{
-		g_packName = param0;
-		return true;
-	}
-	return false;
+	return g_explorer.create(param0, param1);
 }
 
 CMD_PROC(close)
 {
-	g_packName.clear();
 	g_explorer.close();
 	return true;
 }
 
 CMD_PROC(dir)
 {
-	const ZpNode* node = g_explorer.getNode();
+	const ZpNode* node = g_explorer.currentNode();
 	for (list<ZpNode>::const_iterator iter = node->children.begin();
 		iter != node->children.end();
 		++iter)
@@ -82,7 +70,7 @@ CMD_PROC(dir)
 
 CMD_PROC(cd)
 {
-	return g_explorer.enter(param0);
+	return g_explorer.enterDir(param0);
 }
 
 CMD_PROC(add)
@@ -160,9 +148,10 @@ int _tmain(int argc, _TCHAR* argv[])
 	cout << "please type <help>" << endl;
 	while (true)
 	{
-		if (!g_packName.empty())
+		const std::string packName = g_explorer.packageFilename();
+		if (!packName.empty())
 		{
-			cout << g_packName;
+			cout << packName;
 			if (g_explorer.isOpen())
 			{
 				cout << DIR_STR << g_explorer.currentPath() << "\b";	//delete extra '\'

@@ -17,9 +17,12 @@ typedef bool (*FileCallback)(const std::string& path, size_t fileIndex, size_t t
 
 struct ZpNode
 {
+	ZpNode() : userData(NULL){}
+
 	std::string			name;
 	std::list<ZpNode>	children;
 	ZpNode*				parent;
+	mutable void*		userData;
 	bool				isDirectory;
 };
 
@@ -37,12 +40,13 @@ public:
 	bool open(const std::string& path);
 	bool create(const std::string& path, const std::string& inputPath);
 	void close();
-	bool isOpen();
+	bool isOpen() const;
 
 	zp::IPackage* getPack();
-	const std::string& currentPath();
+	
+	const std::string& packageFilename() const;
 
-	bool enter(const std::string& path);
+	bool enterDir(const std::string& path);
 
 	//srcPath can't be empty
 	//if dstPath is empty, file/dir will be add to current path of package
@@ -54,7 +58,13 @@ public:
 	//if dstPath is empty, file/dir will be extracted to current path of system
 	bool extract(const std::string& srcPath, const std::string& dstPath);
 
-	const ZpNode* getNode();
+	void setCurrentNode(const ZpNode* node);
+	const ZpNode* currentNode() const;
+
+	const ZpNode* rootNode() const;
+
+	const std::string& currentPath() const;
+	void getNodePath(const ZpNode* node, std::string& path) const;
 
 private:
 	void clear();
@@ -80,14 +90,13 @@ private:
 	ZpNode* findChild(ZpNode* node, const std::string& name, FindType type);
 	ZpNode* findChildRecursively(ZpNode* node, const std::string& name, FindType type);
 
-	void getPath(const ZpNode* node, std::string& path);
-
 	std::string getArchivedName(const std::string& filename);
 
 private:
 	zp::IPackage*	m_pack;
 	ZpNode			m_root;
 	ZpNode*			m_currentNode;
+	std::string		m_packageFilename;
 	std::string		m_currentPath;
 	std::string		m_workingPath;	//user can operate on directory other than current one
 	std::string		m_basePath;		//base path of external path (of file system)
