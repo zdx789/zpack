@@ -44,6 +44,9 @@ private:
 // Generated message map functions
 protected:
 	DECLARE_MESSAGE_MAP()
+public:
+	afx_msg void OnFileOpen();
+	afx_msg void OnFileNew();
 };
 
 #ifndef _DEBUG  // debug version in LeftView.cpp
