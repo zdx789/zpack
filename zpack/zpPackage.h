@@ -54,7 +54,7 @@ public:
 	virtual void closeFile(IFile* file);
 
 	virtual u32 getFileCount();
-	virtual bool getFilenameByIndex(char* buffer, u32 bufferSize, u32 index);
+	virtual bool getFileInfoByIndex(u32 index, char* filenameBuffer, u32 filenameBufferSize, u32* fileSize = NULL);
 
 	virtual bool addFile(const char* externalFilename, const char* filename, u32 flag = FLAG_REPLACE);
 	virtual bool removeFile(const char* filename);

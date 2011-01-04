@@ -24,11 +24,7 @@ IMPLEMENT_DYNCREATE(CzpEditorDoc, CDocument)
 BEGIN_MESSAGE_MAP(CzpEditorDoc, CDocument)
 	ON_COMMAND(ID_FILE_OPEN, &CzpEditorDoc::OnFileOpen)
 	ON_COMMAND(ID_FILE_NEW, &CzpEditorDoc::OnFileNew)
-	ON_COMMAND(ID_EDIT_ADD, &CzpEditorDoc::OnEditAdd)
-	ON_COMMAND(ID_EDIT_DELETE, &CzpEditorDoc::OnEditDelete)
-	ON_COMMAND(ID_EDIT_EXTRACT, &CzpEditorDoc::OnEditExtract)
 	ON_COMMAND(ID_EDIT_DEFRAG, &CzpEditorDoc::OnEditDefrag)
-	ON_COMMAND(ID_EDIT_ADD_FOLDER, &CzpEditorDoc::OnEditAddFolder)
 END_MESSAGE_MAP()
 
 
@@ -180,39 +176,6 @@ void CzpEditorDoc::OnFileNew()
 		MessageBox(NULL, "Create package failed.", "Error", MB_OK | MB_ICONERROR);
 	}
 	UpdateAllViews(NULL);
-}
-
-void CzpEditorDoc::OnEditAdd()
-{
-	CFileDialog dlg(TRUE, NULL, NULL, OFN_ALLOWMULTISELECT);
-	if (dlg.DoModal() != IDOK)
-	{
-		return;
-	}
-	POSITION pos = dlg.GetStartPosition();
-	while (pos)
-	{
-		CString filename = dlg.GetNextPathName(pos);
-		if (!m_explorer.add(filename.GetString(), ""))
-		{
-			MessageBox(NULL, "Add file failed", "Error", MB_OK | MB_ICONERROR);
-		}
-	}
-	UpdateAllViews(NULL);
-}
-
-void CzpEditorDoc::OnEditAddFolder()
-{
-	//CFolderDialog dlg;
-	//if( fdlg.DoModal() != IDOK )
-}
-
-void CzpEditorDoc::OnEditDelete()
-{
-}
-
-void CzpEditorDoc::OnEditExtract()
-{
 }
 
 void CzpEditorDoc::OnEditDefrag()

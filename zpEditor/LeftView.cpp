@@ -56,7 +56,15 @@ void CLeftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 {
 	const ZpExplorer& explorer = GetDocument()->GetZpExplorer();
 	const ZpNode* node = explorer.currentNode();
+	HTREEITEM currentItem = (HTREEITEM)node->userData;
 	CTreeCtrl& treeCtrl = GetTreeCtrl();
+	if (currentItem != NULL)
+	{
+		updateNode(currentItem);
+		treeCtrl.SelectItem(currentItem);
+		return;
+	}
+	
 	treeCtrl.DeleteAllItems();
 
 	const ZpNode* rootNode = explorer.rootNode();
@@ -64,8 +72,19 @@ void CLeftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 	{
 		return;
 	}
+	std::string packName;
+	const std::string& packFilename = explorer.packageFilename();
+	size_t slashPos = packFilename.find_last_of('\\');
+	if (slashPos == std::string::npos)
+	{
+		packName = packFilename;
+	}
+	else
+	{
+		packName = packFilename.substr(slashPos + 1, packFilename.length() - slashPos - 1);
+	}
 	HTREEITEM rootItem = treeCtrl.InsertItem(TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_STATE | TVIF_PARAM,
-										explorer.packageFilename().c_str(),
+										packName.c_str(),
 										0,
 										1,
 										TVIS_EXPANDED | INDEXTOSTATEIMAGEMASK(1),
@@ -76,6 +95,8 @@ void CLeftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 	rootNode->userData = rootItem;
 
 	updateNode(rootItem);
+
+	treeCtrl.Select(rootItem, TVGN_CARET);
 }
 
 void CLeftView::updateNode(HTREEITEM ti)

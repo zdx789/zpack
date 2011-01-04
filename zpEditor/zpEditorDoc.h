@@ -45,16 +45,12 @@ protected:
 	void SetSearchContent(const CString& value);
 #endif // SHARED_HANDLERS
 
-public:
-	afx_msg void OnFileOpen();
-
 private:
 	ZpExplorer	m_explorer;
+
 public:
+	afx_msg void OnFileOpen();
 	afx_msg void OnFileNew();
 	afx_msg void OnEditAdd();
-	afx_msg void OnEditDelete();
-	afx_msg void OnEditExtract();
 	afx_msg void OnEditDefrag();
-	afx_msg void OnEditAddFolder();
 };

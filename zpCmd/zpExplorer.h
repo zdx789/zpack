@@ -22,6 +22,7 @@ struct ZpNode
 	std::string			name;
 	std::list<ZpNode>	children;
 	ZpNode*				parent;
+	unsigned long		fileSize;
 	mutable void*		userData;
 	bool				isDirectory;
 };
@@ -79,7 +80,7 @@ private:
 
 	bool extractRecursively(ZpNode* node, std::string externalPath, std::string internalPath);
 
-	void insertFileToTree(const std::string& filename);
+	void insertFileToTree(const std::string& filename, unsigned long fileSize);
 
 	enum FindType
 	{
