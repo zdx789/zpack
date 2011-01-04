@@ -22,8 +22,8 @@
 IMPLEMENT_DYNCREATE(CzpEditorDoc, CDocument)
 
 BEGIN_MESSAGE_MAP(CzpEditorDoc, CDocument)
-	ON_COMMAND(ID_FILE_OPEN, &CzpEditorDoc::OnFileOpen)
-	ON_COMMAND(ID_FILE_NEW, &CzpEditorDoc::OnFileNew)
+	//ON_COMMAND(ID_FILE_OPEN, &CzpEditorDoc::OnFileOpen)
+	//ON_COMMAND(ID_FILE_NEW, &CzpEditorDoc::OnFileNew)
 	ON_COMMAND(ID_EDIT_DEFRAG, &CzpEditorDoc::OnEditDefrag)
 END_MESSAGE_MAP()
 

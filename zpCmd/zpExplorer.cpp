@@ -65,6 +65,7 @@ bool ZpExplorer::create(const string& path, const string& inputPath)
 	{
 		return false;
 	}
+	m_packageFilename = path;
 	m_pack = zp::create(path.c_str());
 	if (m_pack == NULL)
 	{
