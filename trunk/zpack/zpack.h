@@ -24,7 +24,7 @@ public:
 	virtual void closeFile(IFile* file) = 0;
 	
 	virtual u32 getFileCount() = 0;
-	virtual bool getFilenameByIndex(char* buffer, u32 bufferSize, u32 index) = 0;
+	virtual bool getFileInfoByIndex(u32 index, char* filenameBuffer, u32 filenameBufferSize, u32* fileSize = 0) = 0;
 
 	//package manipulation fuctions
 	virtual bool addFile(const char* externalFilename, const char* filename, u32 flag = FLAG_REPLACE) = 0;

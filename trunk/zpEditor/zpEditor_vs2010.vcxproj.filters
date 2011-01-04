@@ -48,6 +48,7 @@
     <ClInclude Include="..\zpCmd\fileEnum.h">
       <Filter>zp</Filter>
     </ClInclude>
+    <ClInclude Include="FolderDialog.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="LeftView.cpp" />
@@ -62,6 +63,7 @@
     <ClCompile Include="..\zpCmd\fileEnum.cpp">
       <Filter>zp</Filter>
     </ClCompile>
+    <ClCompile Include="FolderDialog.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="zpEditor.rc">

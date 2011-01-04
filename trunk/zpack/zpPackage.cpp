@@ -91,16 +91,22 @@ u32 Package::getFileCount()
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-bool Package::getFilenameByIndex(char* buffer, u32 bufferSize, u32 index)
+bool Package::getFileInfoByIndex(u32 index, char* filenameBuffer, u32 filenameBufferSize, u32* fileSize)
 {
-	if (index < m_filenames.size())
+	if (index >= m_filenames.size())
 	{
-		strncpy(buffer, m_filenames[index].c_str(), bufferSize - 1);
-		buffer[bufferSize - 1] = 0;
-		return true;
+		return false;
 	}
-	buffer[0] = 0;
-	return false;
+	if (filenameBuffer != NULL)
+	{
+		strncpy(filenameBuffer, m_filenames[index].c_str(), filenameBufferSize - 1);
+		filenameBuffer[filenameBufferSize - 1] = 0;
+	}
+	if (fileSize != NULL)
+	{
+		*fileSize = m_fileEntries[index].fileSize;
+	}
+	return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

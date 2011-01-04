@@ -49,9 +49,10 @@ bool ZpExplorer::open(const string& path)
 	for (unsigned long i = 0; i < count; ++i)
 	{
 		char buffer[256];
-		m_pack->getFilenameByIndex(buffer, sizeof(buffer), i);
+		zp::u32 fileSize;
+		m_pack->getFileInfoByIndex(i, buffer, sizeof(buffer), &fileSize);
 		string filename = buffer;
-		insertFileToTree(filename);
+		insertFileToTree(filename, fileSize);
 	}
 	return true;
 }
@@ -164,7 +165,9 @@ bool ZpExplorer::add(const string& srcPath, const string& dstPath)
 	{
 		//it's a file
 		string nakedFilename = srcPath.substr(pos + 1, srcPath.length() - pos - 1);
-		return addFile(srcPath, nakedFilename);
+		bool ret = addFile(srcPath, nakedFilename);
+		m_pack->flush();
+		return ret;
 	}
 	//it's a directory
 	if (pos != string::npos)
@@ -271,6 +274,7 @@ bool ZpExplorer::extract(const string& srcPath, const string& dstPath)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void ZpExplorer::setCurrentNode(const ZpNode* node)
 {
+	assert(node != NULL);
 	m_currentNode = const_cast<ZpNode*>(node);
 	getNodePath(m_currentNode, m_currentPath);
 }
@@ -309,7 +313,16 @@ bool ZpExplorer::addFile(const string& filename, const string& relativePath)
 	{
 		return false;
 	}
-	insertFileToTree(internalName);
+
+	zp::u32 fileSize = 0;
+	fstream stream;
+	stream.open(filename, ios_base::in | ios_base::binary);
+	if (stream.is_open())
+	{
+		stream.seekg(0, ios::end);
+		fileSize = static_cast<zp::u32>(stream.tellg());
+	}
+	insertFileToTree(internalName, fileSize);
 	return true;
 }
 
@@ -460,7 +473,7 @@ bool ZpExplorer::extractRecursively(ZpNode* node, string externalPath, string in
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-void ZpExplorer::insertFileToTree(const string& filename)
+void ZpExplorer::insertFileToTree(const string& filename, unsigned long fileSize)
 {
 	ZpNode* node = &m_root;
 	string filenameLeft = filename;
@@ -477,6 +490,7 @@ void ZpExplorer::insertFileToTree(const string& filename)
 				newNode.parent = node;
 				newNode.isDirectory = false;
 				newNode.name = filenameLeft;
+				newNode.fileSize = fileSize;
 				node->children.push_back(newNode);
 			}
 			return;
@@ -494,6 +508,7 @@ void ZpExplorer::insertFileToTree(const string& filename)
 			newNode.isDirectory = true;
 			newNode.parent = node;
 			newNode.name = dirName;
+			newNode.fileSize = 0;
 			node->children.push_back(newNode);
 			node = &node->children.back();
 		}
