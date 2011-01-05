@@ -19,8 +19,8 @@ IMPLEMENT_DYNCREATE(CLeftView, CTreeView)
 
 BEGIN_MESSAGE_MAP(CLeftView, CTreeView)
 	ON_NOTIFY_REFLECT(TVN_SELCHANGED, OnSelectChanged)
-	ON_COMMAND(ID_FILE_OPEN, &CLeftView::OnFileOpen)
-	ON_COMMAND(ID_FILE_NEW, &CLeftView::OnFileNew)
+	//ON_COMMAND(ID_FILE_OPEN, &CLeftView::OnFileOpen)
+	//ON_COMMAND(ID_FILE_NEW, &CLeftView::OnFileNew)
 END_MESSAGE_MAP()
 
 
@@ -37,6 +37,10 @@ CLeftView::~CLeftView()
 
 BOOL CLeftView::PreCreateWindow(CREATESTRUCT& cs)
 {
+	CBitmap bm;
+	bm.LoadBitmap(IDB_BITMAP_FOLDER);
+	m_imageList.Create(16, 16, ILC_COLOR24 | ILC_MASK, 0, 0);
+	m_imageList.Add(&bm, RGB(255, 255, 255));
 	return CTreeView::PreCreateWindow(cs);
 }
 
@@ -46,20 +50,21 @@ void CLeftView::OnInitialUpdate()
 
 	CTreeCtrl& treeCtrl = GetTreeCtrl();
 	treeCtrl.ModifyStyle(0, TVS_HASBUTTONS | TVS_HASLINES);
-
-	CBitmap bm;
-	bm.LoadBitmap(IDB_BITMAP_FOLDER);
-	m_imageList.Create(16, 16, ILC_COLOR24 | ILC_MASK, 0, 0);
-	m_imageList.Add(&bm, RGB(255, 255, 255));
 	treeCtrl.SetImageList(&m_imageList, TVSIL_NORMAL);
 }
 
 void CLeftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 {
+	CTreeCtrl& treeCtrl = GetTreeCtrl();
+	BOOL reset = (BOOL)lHint;
+	if (reset)
+	{
+		treeCtrl.DeleteAllItems();
+	}
+
 	const ZpExplorer& explorer = GetDocument()->GetZpExplorer();
 	const ZpNode* node = explorer.currentNode();
 	HTREEITEM currentItem = (HTREEITEM)node->userData;
-	CTreeCtrl& treeCtrl = GetTreeCtrl();
 	if (currentItem != NULL)
 	{
 		updateNode(currentItem);

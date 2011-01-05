@@ -20,6 +20,7 @@ public:
 // Overrides
 public:
 	virtual BOOL OnNewDocument();
+	virtual BOOL OnOpenDocument(LPCTSTR lpszPathName);
 	virtual void Serialize(CArchive& ar);
 #ifdef SHARED_HANDLERS
 	virtual void InitializeSearchContent();
@@ -49,8 +50,5 @@ private:
 	ZpExplorer	m_explorer;
 
 public:
-	afx_msg void OnFileOpen();
-	afx_msg void OnFileNew();
-	afx_msg void OnEditAdd();
 	afx_msg void OnEditDefrag();
 };

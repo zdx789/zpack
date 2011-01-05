@@ -22,9 +22,6 @@
 IMPLEMENT_DYNCREATE(CzpEditorDoc, CDocument)
 
 BEGIN_MESSAGE_MAP(CzpEditorDoc, CDocument)
-	//ON_COMMAND(ID_FILE_OPEN, &CzpEditorDoc::OnFileOpen)
-	//ON_COMMAND(ID_FILE_NEW, &CzpEditorDoc::OnFileNew)
-	ON_COMMAND(ID_EDIT_DEFRAG, &CzpEditorDoc::OnEditDefrag)
 END_MESSAGE_MAP()
 
 
@@ -52,7 +49,15 @@ BOOL CzpEditorDoc::OnNewDocument()
 }
 
 
-
+BOOL CzpEditorDoc::OnOpenDocument(LPCTSTR lpszPathName)
+{
+	if (!m_explorer.open(lpszPathName))
+	{
+		::MessageBox(NULL, "Failed to open file.", "Error", MB_OK | MB_ICONERROR);
+		return FALSE;
+	}
+	return TRUE;
+}
 
 // CzpEditorDoc serialization
 
@@ -142,43 +147,5 @@ void CzpEditorDoc::Dump(CDumpContext& dc) const
 ZpExplorer& CzpEditorDoc::GetZpExplorer()
 {
 	return m_explorer;
-}
-
-void CzpEditorDoc::OnFileOpen()
-{
-	CFileDialog dlg(TRUE, NULL, NULL, 0, "zpack files (*.zpk)|*.zpk|All Files (*.*)|*.*||");
-	if (dlg.DoModal() != IDOK)
-	{
-		return;
-	}
-	CString filename = dlg.GetPathName();
-	if (!m_explorer.open(filename.GetString()))
-	{
-		MessageBox(NULL, "Invalid zpack file.", "Error", MB_OK | MB_ICONERROR);
-	}
-	UpdateAllViews(NULL);
-}
-
-void CzpEditorDoc::OnFileNew()
-{
-	CFileDialog dlg(TRUE, NULL, NULL, 0, "zpack archives (*.zpk)|*.zpk|All Files (*.*)|*.*||");
-	if (dlg.DoModal() != IDOK)
-	{
-		return;
-	}
-	CString filename = dlg.GetPathName();
-	if (dlg.GetFileExt().IsEmpty())
-	{
-		filename += ".zpk";
-	}
-	if (!m_explorer.create(filename.GetString(), ""))
-	{
-		MessageBox(NULL, "Create package failed.", "Error", MB_OK | MB_ICONERROR);
-	}
-	UpdateAllViews(NULL);
-}
-
-void CzpEditorDoc::OnEditDefrag()
-{
 }
 
