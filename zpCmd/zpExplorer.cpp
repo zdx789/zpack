@@ -296,6 +296,7 @@ const ZpNode* ZpExplorer::rootNode() const
 void ZpExplorer::clear()
 {
 	m_root.children.clear();
+	m_root.userData = NULL;
 	m_currentNode = &m_root;
 	getNodePath(m_currentNode, m_currentPath);
 	m_workingPath = m_currentPath;

@@ -8,6 +8,8 @@
 #include "MainFrm.h"
 #include "LeftView.h"
 #include "zpEditorView.h"
+#include "zpEditorDoc.h"
+#include "zpack.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -27,6 +29,9 @@ BEGIN_MESSAGE_MAP(CMainFrame, CFrameWndEx)
 	ON_COMMAND_RANGE(AFX_ID_VIEW_MINIMUM, AFX_ID_VIEW_MAXIMUM, &CMainFrame::OnViewStyle)
 	ON_COMMAND(ID_VIEW_CUSTOMIZE, &CMainFrame::OnViewCustomize)
 	ON_REGISTERED_MESSAGE(AFX_WM_CREATETOOLBAR, &CMainFrame::OnToolbarCreateNew)
+	ON_COMMAND(ID_FILE_NEW, &CMainFrame::OnFileNew)
+	ON_COMMAND(ID_FILE_OPEN, &CMainFrame::OnFileOpen)
+	ON_COMMAND(ID_FILE_DEFRAG, &CMainFrame::OnFileDefrag)
 END_MESSAGE_MAP()
 
 static UINT indicators[] =
@@ -84,7 +89,7 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 	CString strCustomize;
 	bNameValid = strCustomize.LoadString(IDS_TOOLBAR_CUSTOMIZE);
 	ASSERT(bNameValid);
-	m_wndToolBar.EnableCustomizeButton(TRUE, ID_VIEW_CUSTOMIZE, strCustomize);
+	//m_wndToolBar.EnableCustomizeButton(TRUE, ID_VIEW_CUSTOMIZE, strCustomize);
 
 	// Allow user-defined toolbars operations:
 	InitUserToolbars(NULL, uiFirstUserToolBarId, uiLastUserToolBarId);
@@ -338,4 +343,59 @@ BOOL CMainFrame::LoadFrame(UINT nIDResource, DWORD dwDefaultStyle, CWnd* pParent
 	}
 
 	return TRUE;
+}
+
+
+void CMainFrame::OnFileNew()
+{
+	CFileDialog dlg(TRUE, NULL, NULL, 0, "zpack archives (*.zpk)|*.zpk|All Files (*.*)|*.*||");
+	if (dlg.DoModal() != IDOK)
+	{
+		return;
+	}
+	CString filename = dlg.GetPathName();
+	if (dlg.GetFileExt().IsEmpty())
+	{
+		filename += ".zpk";
+	}
+	CzpEditorDoc* document = (CzpEditorDoc*)GetActiveDocument();
+	ZpExplorer& explorer = document->GetZpExplorer();
+	if (!explorer.create(filename.GetString(), ""))
+	{
+		::MessageBox(NULL, "Create package failed.", "Error", MB_OK | MB_ICONERROR);
+	}
+	document->UpdateAllViews(NULL, TRUE);
+}
+
+
+void CMainFrame::OnFileOpen()
+{
+	CFileDialog dlg(TRUE, NULL, NULL, 0, "zpack files (*.zpk)|*.zpk|All Files (*.*)|*.*||");
+	if (dlg.DoModal() != IDOK)
+	{
+		return;
+	}
+	CzpEditorDoc* document = (CzpEditorDoc*)GetActiveDocument();
+	ZpExplorer& explorer = document->GetZpExplorer();
+	CString filename = dlg.GetPathName();
+	if (!explorer.open(filename.GetString()))
+	{
+		::MessageBox(NULL, "Invalid zpack file.", "Error", MB_OK | MB_ICONERROR);
+	}
+	document->UpdateAllViews(NULL, TRUE);
+}
+
+void CMainFrame::OnFileDefrag()
+{
+	CzpEditorDoc* document = (CzpEditorDoc*)GetActiveDocument();
+	ZpExplorer& explorer = document->GetZpExplorer();
+	if (!explorer.isOpen())
+	{
+		return;
+	}
+	if (::MessageBox(NULL, "It will take minutes, continue?", "Question", MB_YESNO | MB_ICONQUESTION) != IDYES)
+	{
+		return;
+	}
+	explorer.getPack()->defrag();
 }
