@@ -13,13 +13,16 @@ class IPackage;
 #define DIR_CHAR '\\'
 #define DIR_STR "\\"
 
-typedef bool (*FileCallback)(const std::string& path, size_t fileIndex, size_t totalFileCount);
+typedef bool (*FileCallback)(const std::string& path, void* param);
 
 struct ZpNode
 {
 	ZpNode() : userData(NULL){}
 
 	std::string			name;
+#if !(ZP_CASE_SENSITIVE)
+	std::string			lowerName;
+#endif
 	std::list<ZpNode>	children;
 	ZpNode*				parent;
 	unsigned long		fileSize;
@@ -36,7 +39,7 @@ public:
 	ZpExplorer();
 	~ZpExplorer();
 
-	void setCallback(FileCallback callback);
+	void setCallback(FileCallback callback, void* param);
 
 	bool open(const std::string& path);
 	bool create(const std::string& path, const std::string& inputPath);
@@ -61,11 +64,13 @@ public:
 
 	void setCurrentNode(const ZpNode* node);
 	const ZpNode* currentNode() const;
-
 	const ZpNode* rootNode() const;
 
 	const std::string& currentPath() const;
 	void getNodePath(const ZpNode* node, std::string& path) const;
+
+	unsigned long countDiskFile(const std::string& path);
+	unsigned long countNodeFile(const ZpNode* node);
 
 private:
 	void clear();
@@ -73,14 +78,14 @@ private:
 	bool addFile(const std::string& externalPath, const std::string& internalPath);
 	bool extractFile(const std::string& externalPath, const std::string& internalPath);
 
-	void countChildRecursively(ZpNode* node);
+	void countChildRecursively(const ZpNode* node);
 
 	bool removeChild(ZpNode* node, ZpNode* child);
 	bool removeChildRecursively(ZpNode* node, std::string path);
 
 	bool extractRecursively(ZpNode* node, std::string externalPath, std::string internalPath);
 
-	void insertFileToTree(const std::string& filename, unsigned long fileSize);
+	void insertFileToTree(const std::string& filename, unsigned long fileSize, bool checkFileExist);
 
 	enum FindType
 	{
@@ -102,8 +107,8 @@ private:
 	std::string		m_workingPath;	//user can operate on directory other than current one
 	std::string		m_basePath;		//base path of external path (of file system)
 	FileCallback	m_callback;
+	void*			m_callbackParam;
 	size_t			m_fileCount;
-	size_t			m_fileIndex;
 };
 
 #endif

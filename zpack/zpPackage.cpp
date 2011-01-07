@@ -5,8 +5,6 @@
 namespace zp
 {
 
-const bool CASE_SENSITIVE = false;
-
 const u32 MIN_HASH_TABLE_SIZE = 256;
 const u32 MAX_HASH_TABLE_SIZE = 0x80000;
 const u32 HASH_SEED0 = 31;	//not a good idea to change these numbers, must be identical between reading and writing code
@@ -53,7 +51,7 @@ bool Package::valid() const
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-bool Package::hasFile(const char* filename)
+bool Package::hasFile(const char* filename) const
 {
 	if (m_dirty)
 	{
@@ -85,7 +83,7 @@ void Package::closeFile(IFile* file)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-u32 Package::getFileCount()
+u32 Package::getFileCount() const
 {
 	return (u32)m_fileEntries.size();
 }
@@ -179,7 +177,7 @@ bool Package::removeFile(const char* filename)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-bool Package::dirty()
+bool Package::dirty() const
 {
 	return m_dirty;
 }
@@ -227,34 +225,24 @@ void Package::flush()
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-u64 Package::countFragmentSize(u64& bytesToMove)
+u64 Package::countFragmentSize()
 {
 	if (m_dirty)
 	{
-		bytesToMove = 0;
 		return 0;
 	}
 	u64 totalSize = m_header.headerSize + m_header.fileCount * m_header.fileEntrySize + m_header.filenameSize;
 	bool moving = false;
-	bytesToMove = 0;
 	u64 nextPos = m_header.headerSize;
 	for (u32 i = 0; i < m_fileEntries.size(); ++i)
 	{
-		FileEntry& entry = m_fileEntries[i];
+		const FileEntry& entry = m_fileEntries[i];
 		if (!moving && entry.byteOffset != nextPos)
 		{
 			moving = true;
 		}
-		if (moving)
-		{
-			bytesToMove += entry.fileSize;
-		}
 		nextPos += entry.fileSize;
 		totalSize += entry.fileSize;
-	}
-	if (bytesToMove > 0 || nextPos != m_header.fileEntryOffset)
-	{
-		bytesToMove += (m_header.fileCount * m_header.fileEntrySize + m_header.filenameSize);
 	}
 	m_stream.seekg(0, ios::end);
 	u64 currentSize = m_stream.tellg();
@@ -444,7 +432,7 @@ bool Package::buildHashTable()
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-int Package::getFileIndex(const char* filename)
+int Package::getFileIndex(const char* filename) const
 {
 	u32 hash0 = stringHash(filename, HASH_SEED0);
 	u32 hash1 = stringHash(filename, HASH_SEED1);
@@ -453,7 +441,7 @@ int Package::getFileIndex(const char* filename)
 	int fileIndex = m_hashTable[hashIndex];
 	while (fileIndex >= 0)
 	{
-		FileEntry& entry = m_fileEntries[fileIndex];
+		const FileEntry& entry = m_fileEntries[fileIndex];
 		if (entry.hash0 == hash0 && entry.hash1 == hash1 && entry.hash2 == hash2)
 		{
 			if ((entry.flag & FILE_FLAG_DELETED) != 0)
@@ -512,19 +500,16 @@ void Package::insertFile(FileEntry& entry, const char* filename)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-u32 Package::stringHash(const char* str, u32 seed)
+u32 Package::stringHash(const char* str, u32 seed) const
 {
 	u32 out = 0;
 	while (*str)
 	{
-		if (CASE_SENSITIVE)
-		{
-			out = out * seed + *(str++);
-		}
-		else
-		{
-			out = out * seed + tolower(*(str++));
-		}
+	#if (ZP_CASE_SENSITIVE)
+		out = out * seed + *(str++);
+	#else
+		out = out * seed + tolower(*(str++));
+	#endif
 	}
 	return out;
 }

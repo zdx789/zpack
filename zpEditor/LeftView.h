@@ -2,9 +2,10 @@
 // LeftView.h : interface of the CLeftView class
 //
 
-
 #pragma once
+#include "ProgressDialog.h"
 
+struct ZpNode;
 class CzpEditorDoc;
 
 class CLeftView : public CTreeView
@@ -38,6 +39,11 @@ public:
 protected:
 	void updateNode(HTREEITEM ti);
 	void OnSelectChanged(NMHDR *pNMHDR, LRESULT *pResult);
+
+	ZpNode* getSelectedNode();
+	void startOperation(ProgressDialog::Operation op, size_t fileCount,
+					const std::vector<std::pair<std::string, std::string>>* operations);
+
 private:
 	CImageList	m_imageList;
 
@@ -47,6 +53,10 @@ protected:
 public:
 	afx_msg void OnFileOpen();
 	afx_msg void OnFileNew();
+	afx_msg void OnEditAdd();
+	afx_msg void OnEditAddFolder();
+	afx_msg void OnEditDelete();
+	afx_msg void OnEditExtract();
 };
 
 #ifndef _DEBUG  // debug version in LeftView.cpp

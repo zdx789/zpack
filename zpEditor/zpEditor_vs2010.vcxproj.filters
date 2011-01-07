@@ -10,7 +10,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <None Include="zpEditor.reg" />
     <None Include="UserImages.bmp">
       <Filter>Resource Files</Filter>
     </None>
@@ -49,6 +48,7 @@
       <Filter>zp</Filter>
     </ClInclude>
     <ClInclude Include="FolderDialog.h" />
+    <ClInclude Include="ProgressDialog.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="LeftView.cpp" />
@@ -64,6 +64,7 @@
       <Filter>zp</Filter>
     </ClCompile>
     <ClCompile Include="FolderDialog.cpp" />
+    <ClCompile Include="ProgressDialog.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="zpEditor.rc">
