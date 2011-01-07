@@ -88,6 +88,10 @@
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalLibraryDirectories>../zpack/$(Configuration)</AdditionalLibraryDirectories>
       <AdditionalDependencies>zpack.lib</AdditionalDependencies>
+      <IgnoreSpecificDefaultLibraries>
+      </IgnoreSpecificDefaultLibraries>
+      <AddModuleNamesToAssembly>
+      </AddModuleNamesToAssembly>
     </Link>
     <Midl>
       <MkTypLibCompatible>false</MkTypLibCompatible>
@@ -108,7 +112,6 @@
     <None Include="res\zpEditor.rc2" />
     <None Include="res\zpEditorDoc.ico" />
     <None Include="UserImages.bmp" />
-    <None Include="zpEditor.reg" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\zpCmd\fileEnum.h" />
@@ -116,6 +119,7 @@
     <ClInclude Include="FolderDialog.h" />
     <ClInclude Include="LeftView.h" />
     <ClInclude Include="MainFrm.h" />
+    <ClInclude Include="ProgressDialog.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
@@ -135,6 +139,7 @@
     <ClCompile Include="FolderDialog.cpp" />
     <ClCompile Include="LeftView.cpp" />
     <ClCompile Include="MainFrm.cpp" />
+    <ClCompile Include="ProgressDialog.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>

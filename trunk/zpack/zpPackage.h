@@ -49,19 +49,19 @@ public:
 
 	bool valid() const;
 
-	virtual bool hasFile(const char* filename);
+	virtual bool hasFile(const char* filename) const;
 	virtual IFile* openFile(const char* filename);
 	virtual void closeFile(IFile* file);
 
-	virtual u32 getFileCount();
+	virtual u32 getFileCount() const;
 	virtual bool getFileInfoByIndex(u32 index, char* filenameBuffer, u32 filenameBufferSize, u32* fileSize = NULL);
 
 	virtual bool addFile(const char* externalFilename, const char* filename, u32 flag = FLAG_REPLACE);
 	virtual bool removeFile(const char* filename);
-	virtual bool dirty();
+	virtual bool dirty() const;
 	virtual void flush();
 
-	virtual u64 countFragmentSize(u64& bytesToMove);
+	virtual u64 countFragmentSize();
 	virtual bool defrag();
 
 private:
@@ -70,10 +70,10 @@ private:
 	bool readFilenames();
 
 	bool buildHashTable();
-	int getFileIndex(const char* filename);
+	int getFileIndex(const char* filename) const;
 	void insertFile(FileEntry& entry, const char* filename);
 	
-	u32 stringHash(const char* str, u32 seed);
+	u32 stringHash(const char* str, u32 seed) const;
 
 	void fixHashTable(u32 index);
 

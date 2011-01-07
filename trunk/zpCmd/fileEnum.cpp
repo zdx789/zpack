@@ -48,15 +48,7 @@ bool addPackFile(const std::string& filename, void* param)
 {
 	ZpExplorer* explorer = reinterpret_cast<ZpExplorer*>(param);
 	std::string relativePath = filename.substr(explorer->m_basePath.length(), filename.length() - explorer->m_basePath.length());
-
-	explorer->addFile(filename, relativePath);
-	++explorer->m_fileIndex;
-	if (explorer->m_callback != NULL &&
-		!explorer->m_callback(filename, explorer->m_fileIndex, explorer->m_fileCount))
-	{
-		return false;
-	}
-	return true;
+	return explorer->addFile(filename, relativePath);
 }
 
 bool countFile(const std::string& filename, void* param)

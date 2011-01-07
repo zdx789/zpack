@@ -12,7 +12,7 @@
 
 using namespace std;
 
-bool zpcallback(const string& path, size_t fileIndex, size_t totalFileCount)
+bool zpcallback(const string& path, size_t fileIndex, size_t totalFileCount, void* param)
 {
 	cout << path << endl;
 	return true;
@@ -130,7 +130,7 @@ CMD_PROC(help)
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-	g_explorer.setCallback(zpcallback);
+	g_explorer.setCallback(zpcallback, NULL);
 
 	REGISTER_CMD(exit);
 	REGISTER_CMD(create);

@@ -7,6 +7,8 @@
 
 #include "zpEditorDoc.h"
 #include "LeftView.h"
+#include "ProgressDialog.h"
+#include "FolderDialog.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -21,6 +23,10 @@ BEGIN_MESSAGE_MAP(CLeftView, CTreeView)
 	ON_NOTIFY_REFLECT(TVN_SELCHANGED, OnSelectChanged)
 	//ON_COMMAND(ID_FILE_OPEN, &CLeftView::OnFileOpen)
 	//ON_COMMAND(ID_FILE_NEW, &CLeftView::OnFileNew)
+	ON_COMMAND(ID_EDIT_ADD, &CLeftView::OnEditAdd)
+	ON_COMMAND(ID_EDIT_ADD_FOLDER, &CLeftView::OnEditAddFolder)
+	ON_COMMAND(ID_EDIT_DELETE, &CLeftView::OnEditDelete)
+	ON_COMMAND(ID_EDIT_EXTRACT, &CLeftView::OnEditExtract)
 END_MESSAGE_MAP()
 
 
@@ -219,3 +225,88 @@ void CLeftView::OnFileNew()
 	treeCtrl.DeleteAllItems();
 	m_pDocument->UpdateAllViews(NULL);
 }
+
+void CLeftView::OnEditAdd()
+{
+	CFileDialog dlg(TRUE, NULL, NULL, OFN_ALLOWMULTISELECT);
+	if (dlg.DoModal() != IDOK)
+	{
+		return;
+	}
+	size_t fileCount = 0;
+	std::vector<std::pair<std::string, std::string>> params;
+	ZpExplorer& explorer = GetDocument()->GetZpExplorer();
+	POSITION pos = dlg.GetStartPosition();
+	while (pos)
+	{
+		CString filename = dlg.GetNextPathName(pos);
+		fileCount += explorer.countDiskFile(filename.GetString());
+		params.push_back(std::make_pair(filename.GetString(), ""));
+	}
+	startOperation(ProgressDialog::OP_ADD, fileCount, &params);
+	m_pDocument->UpdateAllViews(NULL);
+}
+
+void CLeftView::OnEditAddFolder()
+{
+	CFolderDialog folderDlg(NULL, "Select folder to add to package.");
+	if (folderDlg.DoModal() != IDOK)
+	{
+		return;
+	}
+	CString path = folderDlg.GetPathName();
+	ZpExplorer& explorer = GetDocument()->GetZpExplorer();
+	size_t fileCount = explorer.countDiskFile(path.GetString());
+
+	std::vector<std::pair<std::string, std::string>> params;
+	params.push_back(std::make_pair(path.GetString(), ""));
+	startOperation(ProgressDialog::OP_ADD, fileCount, &params);
+	m_pDocument->UpdateAllViews(NULL);
+}
+
+void CLeftView::OnEditDelete()
+{
+	ZpExplorer& explorer = GetDocument()->GetZpExplorer();
+	explorer.setCallback(NULL, NULL);
+
+	std::string warning = "Do you want to delete ";
+	warning += "\"";
+	warning += explorer.currentNode()->name;
+	warning += "\"?";
+	if (::MessageBox(NULL, warning.c_str(), "Question", MB_YESNO | MB_ICONQUESTION) != IDYES)
+	{
+		return;
+	}
+	explorer.remove(".");
+	m_pDocument->UpdateAllViews(NULL);
+}
+
+void CLeftView::OnEditExtract()
+{
+	CFolderDialog dlg(NULL, "Select dest folder to extract.");
+	if (dlg.DoModal() != IDOK)
+	{
+		return;
+	}
+	std::string destPath = dlg.GetPathName().GetString();
+
+	ZpExplorer& explorer = GetDocument()->GetZpExplorer();
+
+	size_t fileCount = explorer.countNodeFile(explorer.currentNode());
+	std::vector<std::pair<std::string, std::string>> params;
+	params.push_back(std::make_pair(".", destPath));
+	startOperation(ProgressDialog::OP_EXTRACT, fileCount, &params);
+}
+
+void CLeftView::startOperation(ProgressDialog::Operation op, size_t fileCount,
+							const std::vector<std::pair<std::string, std::string>>* params)
+{
+	ProgressDialog progressDlg;
+	progressDlg.m_explorer = &(GetDocument()->GetZpExplorer());
+	progressDlg.m_running = true;
+	progressDlg.m_params = params;
+	progressDlg.m_operation = op;
+	progressDlg.m_fileCount = fileCount;
+	progressDlg.DoModal();
+}
+

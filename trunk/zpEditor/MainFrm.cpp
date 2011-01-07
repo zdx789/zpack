@@ -10,6 +10,7 @@
 #include "zpEditorView.h"
 #include "zpEditorDoc.h"
 #include "zpack.h"
+#include <sstream>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -393,7 +394,10 @@ void CMainFrame::OnFileDefrag()
 	{
 		return;
 	}
-	if (::MessageBox(NULL, "It will take minutes, continue?", "Question", MB_YESNO | MB_ICONQUESTION) != IDYES)
+	zp::u64 fragSize = explorer.getPack()->countFragmentSize();
+	std::stringstream tip;
+	tip << "You can save " << fragSize << " bytes, It will take minutes, continue?";
+	if (::MessageBox(NULL, tip.str().c_str(), "Question", MB_YESNO | MB_ICONQUESTION) != IDYES)
 	{
 		return;
 	}

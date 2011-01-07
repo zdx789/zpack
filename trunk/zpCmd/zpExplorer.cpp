@@ -13,7 +13,7 @@ ZpExplorer::ZpExplorer()
 	: m_pack(NULL)
 	, m_callback(NULL)
 	, m_fileCount(0)
-	, m_fileIndex(0)
+	, m_callbackParam(NULL)
 {
 	m_root.isDirectory = true;
 	m_root.parent = NULL;
@@ -30,9 +30,10 @@ ZpExplorer::~ZpExplorer()
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-void ZpExplorer::setCallback(FileCallback callback)
+void ZpExplorer::setCallback(FileCallback callback, void* param)
 {
 	m_callback = callback;
+	m_callbackParam = param;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -52,7 +53,7 @@ bool ZpExplorer::open(const string& path)
 		zp::u32 fileSize;
 		m_pack->getFileInfoByIndex(i, buffer, sizeof(buffer), &fileSize);
 		string filename = buffer;
-		insertFileToTree(filename, fileSize);
+		insertFileToTree(filename, fileSize, false);
 	}
 	return true;
 }
@@ -80,13 +81,7 @@ bool ZpExplorer::create(const string& path, const string& inputPath)
 	{
 		m_basePath += DIR_STR;
 	}
-	m_fileCount = 0;
-	m_fileIndex = 0;
-	enumFile(m_basePath, countFile, this);
-	if (m_fileCount > 0)
-	{
-		enumFile(m_basePath, addPackFile, this);
-	}
+	enumFile(m_basePath, addPackFile, this);
 	return true;
 }
 
@@ -124,7 +119,13 @@ const string& ZpExplorer::currentPath() const
 bool ZpExplorer::enterDir(const string& path)
 {
 	assert(m_currentNode != NULL);
+#if !(ZP_CASE_SENSITIVE)
+	string lowerPath = path;
+	transform(path.begin(), path.end(), lowerPath.begin(), ::tolower);
+	ZpNode* child = findChildRecursively(m_currentNode, lowerPath, FIND_DIR);
+#else
 	ZpNode* child = findChildRecursively(m_currentNode, path, FIND_DIR);
+#endif
 	if (child == NULL)
 	{
 		return false;
@@ -181,13 +182,6 @@ bool ZpExplorer::add(const string& srcPath, const string& dstPath)
 	{
 		searchDirectory += DIR_STR;
 	}
-	m_fileCount = 0;
-	m_fileIndex = 0;
-	enumFile(searchDirectory, countFile, this);
-	if (m_fileCount == 0)
-	{
-		return false;
-	}
 	enumFile(searchDirectory, addPackFile, this);
 	m_pack->flush();
 	return true;
@@ -201,15 +195,14 @@ bool ZpExplorer::remove(const string& path)
 		return false;
 	}
 	list<ZpNode>::iterator found;
+#if !(ZP_CASE_SENSITIVE)
+	string lowerPath = path;
+	transform(path.begin(), path.end(), lowerPath.begin(), ::tolower);
+	ZpNode* child = findChildRecursively(m_currentNode, lowerPath, FIND_ANY);
+#else
 	ZpNode* child = findChildRecursively(m_currentNode, path, FIND_ANY);
+#endif
 	if (child == NULL)
-	{
-		return false;
-	}
-	m_fileCount = 0;
-	m_fileIndex = 0;
-	countChildRecursively(child);
-	if (m_fileCount == 0)
 	{
 		return false;
 	}
@@ -250,15 +243,14 @@ bool ZpExplorer::extract(const string& srcPath, const string& dstPath)
 	{
 		externalPath += DIR_STR;
 	}
+#if !(ZP_CASE_SENSITIVE)
+	string lowerPath = srcPath;
+	transform(srcPath.begin(), srcPath.end(), lowerPath.begin(), ::tolower);
+	ZpNode* child = findChildRecursively(m_currentNode, lowerPath, FIND_ANY);
+#else
 	ZpNode* child = findChildRecursively(m_currentNode, srcPath, FIND_ANY);
+#endif
 	if (child == NULL)
-	{
-		return false;
-	}
-	m_fileCount = 0;
-	m_fileIndex = 0;
-	countChildRecursively(child);
-	if (m_fileCount == 0)
 	{
 		return false;
 	}
@@ -310,6 +302,10 @@ void ZpExplorer::clear()
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool ZpExplorer::addFile(const string& filename, const string& relativePath)
 {
+	if (m_callback != NULL && !m_callback(relativePath, m_callbackParam))
+	{
+		return false;
+	}
 	string internalName = m_workingPath + relativePath;
 	if (!m_pack->addFile(filename.c_str(), internalName.c_str()))
 	{
@@ -324,7 +320,7 @@ bool ZpExplorer::addFile(const string& filename, const string& relativePath)
 		stream.seekg(0, ios::end);
 		fileSize = static_cast<zp::u32>(stream.tellg());
 	}
-	insertFileToTree(internalName, fileSize);
+	insertFileToTree(internalName, fileSize, true);
 	return true;
 }
 
@@ -353,14 +349,14 @@ bool ZpExplorer::extractFile(const string& externalPath, const string& internalP
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-void ZpExplorer::countChildRecursively(ZpNode* node)
+void ZpExplorer::countChildRecursively(const ZpNode* node)
 {
 	if (!node->isDirectory)
 	{
 		++m_fileCount;
 	}
-	for (list<ZpNode>::iterator iter = node->children.begin();
-		iter != node->children.end();
+	for (list<ZpNode>::const_iterator iter = node->children.cbegin();
+		iter != node->children.cend();
 		++iter)
 	{
 		countChildRecursively(&(*iter));
@@ -390,12 +386,11 @@ bool ZpExplorer::removeChildRecursively(ZpNode* node, string path)
 	assert(node != NULL && m_pack != NULL);
 	if (!node->isDirectory)
 	{
-		if (!m_pack->removeFile(path.c_str()))
+		if (m_callback != NULL && !m_callback(node->name, m_callbackParam))
 		{
 			return false;
 		}
-		++m_fileIndex;
-		if (m_callback != NULL && !m_callback(node->name, m_fileIndex, m_fileCount))
+		if (!m_pack->removeFile(path.c_str()))
 		{
 			return false;
 		}
@@ -431,12 +426,11 @@ bool ZpExplorer::extractRecursively(ZpNode* node, string externalPath, string in
 	externalPath += node->name;
 	if (!node->isDirectory)
 	{
-		if (!extractFile(externalPath, internalPath))
+		if (m_callback != NULL && !m_callback(internalPath, m_callbackParam))
 		{
 			return false;
 		}
-		++m_fileIndex;
-		if (m_callback != NULL && !m_callback(externalPath, m_fileIndex, m_fileCount))
+		if (!extractFile(externalPath, internalPath))
 		{
 			return false;
 		}
@@ -475,7 +469,7 @@ bool ZpExplorer::extractRecursively(ZpNode* node, string externalPath, string in
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-void ZpExplorer::insertFileToTree(const string& filename, unsigned long fileSize)
+void ZpExplorer::insertFileToTree(const string& filename, unsigned long fileSize, bool checkFileExist)
 {
 	ZpNode* node = &m_root;
 	string filenameLeft = filename;
@@ -485,13 +479,22 @@ void ZpExplorer::insertFileToTree(const string& filename, unsigned long fileSize
 		if (pos == string::npos)
 		{
 			//it's a file
-			ZpNode* child = findChild(node, filenameLeft, FIND_FILE);
+		#if !(ZP_CASE_SENSITIVE)
+			string lowerName = filenameLeft;
+			transform(filenameLeft.begin(), filenameLeft.end(), lowerName.begin(), ::tolower);
+			ZpNode* child = checkFileExist ? findChild(node, lowerName, FIND_FILE) : NULL;
+		#else
+			ZpNode* child = checkFileExist ? findChild(node, filenameLeft, FIND_FILE) : NULL;
+		#endif
 			if (child == NULL)
 			{
 				ZpNode newNode;
 				newNode.parent = node;
 				newNode.isDirectory = false;
 				newNode.name = filenameLeft;
+			#if !(ZP_CASE_SENSITIVE)
+				newNode.lowerName = lowerName;
+			#endif
 				newNode.fileSize = fileSize;
 				node->children.push_back(newNode);
 			}
@@ -499,7 +502,13 @@ void ZpExplorer::insertFileToTree(const string& filename, unsigned long fileSize
 		}
 		string dirName = filenameLeft.substr(0, pos);
 		filenameLeft = filenameLeft.substr(pos + 1, filenameLeft.length() - pos - 1);
+	#if !(ZP_CASE_SENSITIVE)
+		string lowerName = dirName;
+		transform(dirName.begin(), dirName.end(), lowerName.begin(), ::tolower);
+		ZpNode* child = findChild(node, lowerName, FIND_DIR);
+	#else
 		ZpNode* child = findChild(node, dirName, FIND_DIR);
+	#endif
 		if (child != NULL)
 		{
 			node = child;
@@ -510,6 +519,9 @@ void ZpExplorer::insertFileToTree(const string& filename, unsigned long fileSize
 			newNode.isDirectory = true;
 			newNode.parent = node;
 			newNode.name = dirName;
+		#if !(ZP_CASE_SENSITIVE)
+			newNode.lowerName = lowerName;
+		#endif
 			newNode.fileSize = 0;
 			node->children.push_back(newNode);
 			node = &node->children.back();
@@ -533,11 +545,6 @@ ZpNode* ZpExplorer::findChild(ZpNode* node, const string& name, FindType type)
 	{
 		return type == FIND_FILE ? NULL : node->parent;
 	}
-	string lowerName = name;
-	if (!zp::CASE_SENSITIVE)
-	{
-		transform(lowerName.begin(), lowerName.end(), lowerName.begin(), ::tolower);
-	}
 	for (list<ZpNode>::iterator iter = node->children.begin();
 		iter != node->children.end();
 		++iter)
@@ -546,15 +553,17 @@ ZpNode* ZpExplorer::findChild(ZpNode* node, const string& name, FindType type)
 		{
 			continue;
 		}
-		string dirName = iter->name;
-		if (!zp::CASE_SENSITIVE)
-		{
-			transform(dirName.begin(), dirName.end(), dirName.begin(), ::tolower);
-		}
-		if (dirName == lowerName)
+	#if !(ZP_CASE_SENSITIVE)
+		if (name == iter->lowerName)
 		{
 			return &(*iter);
 		}
+	#else
+		if (name == iter->name)
+		{
+			return &(*iter);
+		}
+	#endif
 	}
 	return NULL;
 }
@@ -588,4 +597,29 @@ void ZpExplorer::getNodePath(const ZpNode* node, std::string& path) const
 		path = node->name + DIR_STR + path;
 		node = node->parent;
 	}
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+unsigned long ZpExplorer::countDiskFile(const std::string& path)
+{
+	m_basePath = path;
+	if (m_basePath.c_str()[m_basePath.length() - 1] != DIR_CHAR)
+	{
+		m_basePath += DIR_STR;
+	}
+	m_fileCount = 0;
+	enumFile(m_basePath, countFile, this);
+	if (m_fileCount == 0)
+	{
+		return 1;	//single file
+	}
+	return m_fileCount;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+unsigned long ZpExplorer::countNodeFile(const ZpNode* node)
+{
+	m_fileCount = 0;
+	countChildRecursively(node);
+	return m_fileCount;
 }

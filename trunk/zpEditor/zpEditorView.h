@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include "ProgressDialog.h"
+
 struct ZpNode;
 
 class CzpEditorView : public CListView
@@ -39,6 +41,9 @@ protected:
 	void OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint);
 
 	ZpNode* getSelectedNode();
+
+	void startOperation(ProgressDialog::Operation op, size_t fileCount,
+					const std::vector<std::pair<std::string, std::string>>* operations);
 
 protected:
 	afx_msg void OnStyleChanged(int nStyleType, LPSTYLESTRUCT lpStyleStruct);
