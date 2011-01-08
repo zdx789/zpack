@@ -45,6 +45,8 @@ protected:
 	void startOperation(ProgressDialog::Operation op, size_t fileCount,
 					const std::vector<std::pair<std::string, std::string>>* operations);
 
+	void enterDirectory(ZpNode* node);
+
 protected:
 	afx_msg void OnStyleChanged(int nStyleType, LPSTYLESTRUCT lpStyleStruct);
 	afx_msg void OnFilePrintPreview();

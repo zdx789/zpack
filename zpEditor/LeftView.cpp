@@ -21,6 +21,7 @@ IMPLEMENT_DYNCREATE(CLeftView, CTreeView)
 
 BEGIN_MESSAGE_MAP(CLeftView, CTreeView)
 	ON_NOTIFY_REFLECT(TVN_SELCHANGED, OnSelectChanged)
+	ON_WM_KEYDOWN()
 	//ON_COMMAND(ID_FILE_OPEN, &CLeftView::OnFileOpen)
 	//ON_COMMAND(ID_FILE_NEW, &CLeftView::OnFileNew)
 	ON_COMMAND(ID_EDIT_ADD, &CLeftView::OnEditAdd)
@@ -296,6 +297,15 @@ void CLeftView::OnEditExtract()
 	std::vector<std::pair<std::string, std::string>> params;
 	params.push_back(std::make_pair(".", destPath));
 	startOperation(ProgressDialog::OP_EXTRACT, fileCount, &params);
+}
+
+void CLeftView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
+{
+	if (nChar == VK_DELETE)
+	{
+		OnEditDelete();
+	}
+	CTreeView::OnKeyDown(nChar, nRepCnt, nFlags);
 }
 
 void CLeftView::startOperation(ProgressDialog::Operation op, size_t fileCount,

@@ -1,3 +1,4 @@
+#include "Stdafx.h"
 #include "zpExplorer.h"
 #include "zpack.h"
 #include <cassert>
@@ -523,7 +524,16 @@ void ZpExplorer::insertFileToTree(const string& filename, unsigned long fileSize
 			newNode.lowerName = lowerName;
 		#endif
 			newNode.fileSize = 0;
-			node->children.push_back(newNode);
+			//insert after all directories
+			list<ZpNode>::iterator insertPoint;
+			for (insertPoint = node->children.begin(); insertPoint != node->children.end();	++insertPoint)
+			{
+				if (!insertPoint->isDirectory)
+				{
+					break;
+				}
+			}
+			node->children.insert(insertPoint, newNode);
 			node = &node->children.back();
 		}
 	}

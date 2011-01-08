@@ -44,6 +44,8 @@ protected:
 	void startOperation(ProgressDialog::Operation op, size_t fileCount,
 					const std::vector<std::pair<std::string, std::string>>* operations);
 
+	void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
+
 private:
 	CImageList	m_imageList;
 
