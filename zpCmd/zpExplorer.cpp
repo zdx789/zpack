@@ -533,8 +533,9 @@ void ZpExplorer::insertFileToTree(const string& filename, unsigned long fileSize
 					break;
 				}
 			}
-			node->children.insert(insertPoint, newNode);
-			node = &node->children.back();
+			list<ZpNode>::iterator inserted;
+			inserted = node->children.insert(insertPoint, newNode);
+			node = &(*inserted);
 		}
 	}
 }
