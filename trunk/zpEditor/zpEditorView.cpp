@@ -169,21 +169,8 @@ void CzpEditorView::OnDbClick(NMHDR *pNMHDR, LRESULT *pResult)
 	{
 		return;
 	}
-	ZpExplorer& explorer = GetDocument()->GetZpExplorer();
 	ZpNode* node = (ZpNode*)listCtrl.GetItemData(selected);
-	if (node == NULL)
-	{
-		explorer.enterDir("..");
-	}
-	else if (node->isDirectory)
-	{
-		explorer.setCurrentNode(node);
-	}
-	else
-	{
-		return;
-	}
-	m_pDocument->UpdateAllViews(NULL);
+	enterDirectory(node);
 }
 
 // CzpEditorView diagnostics
@@ -264,8 +251,10 @@ void CzpEditorView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	}
 	else if (nChar == VK_RETURN)
 	{
-
+		ZpNode* node = getSelectedNode();
+		enterDirectory(node);
 	}
+	CListView::OnKeyDown(nChar, nRepCnt, nFlags);
 }
 
 void CzpEditorView::OnEditAddFolder()
@@ -378,4 +367,22 @@ void CzpEditorView::startOperation(ProgressDialog::Operation op, size_t fileCoun
 	progressDlg.m_operation = op;
 	progressDlg.m_fileCount = fileCount;
 	progressDlg.DoModal();
+}
+
+void CzpEditorView::enterDirectory(ZpNode* node)
+{
+	ZpExplorer& explorer = GetDocument()->GetZpExplorer();
+	if (node == NULL)
+	{
+		explorer.enterDir("..");
+	}
+	else if (node->isDirectory)
+	{
+		explorer.setCurrentNode(node);
+	}
+	else
+	{
+		return;
+	}
+	m_pDocument->UpdateAllViews(NULL);
 }

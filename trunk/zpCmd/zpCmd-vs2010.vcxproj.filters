@@ -8,5 +8,6 @@
   <ItemGroup>
     <ClInclude Include="fileEnum.h" />
     <ClInclude Include="zpExplorer.h" />
+    <ClInclude Include="Stdafx.h" />
   </ItemGroup>
 </Project>

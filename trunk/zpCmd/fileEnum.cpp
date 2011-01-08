@@ -1,3 +1,4 @@
+#include "Stdafx.h"
 #include "fileEnum.h"
 #include <string>
 #include <iostream>
