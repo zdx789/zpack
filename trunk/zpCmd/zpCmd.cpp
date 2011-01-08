@@ -12,7 +12,7 @@
 
 using namespace std;
 
-bool zpcallback(const string& path, size_t fileIndex, size_t totalFileCount, void* param)
+bool zpcallback(const string& path, void* param)
 {
 	cout << path << endl;
 	return true;
@@ -95,9 +95,8 @@ CMD_PROC(fragment)
 	{
 		return false;
 	}
-	unsigned __int64 toMove;
-	unsigned __int64 fragSize = pack->countFragmentSize(toMove);
-	cout << "fragment:" << fragSize << " bytes, " << toMove << " bytes need moving" << endl;
+	unsigned __int64 fragSize = pack->countFragmentSize();
+	cout << "fragment:" << fragSize << " bytes" << endl;
 	return true;
 }
 
