@@ -346,7 +346,6 @@ BOOL CMainFrame::LoadFrame(UINT nIDResource, DWORD dwDefaultStyle, CWnd* pParent
 	return TRUE;
 }
 
-
 void CMainFrame::OnFileNew()
 {
 	CFileDialog dlg(TRUE, NULL, NULL, 0, "zpack archives (*.zpk)|*.zpk|All Files (*.*)|*.*||");
@@ -367,7 +366,6 @@ void CMainFrame::OnFileNew()
 	}
 	document->UpdateAllViews(NULL, TRUE);
 }
-
 
 void CMainFrame::OnFileOpen()
 {

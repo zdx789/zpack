@@ -464,24 +464,28 @@ void Package::insertFile(FileEntry& entry, const char* filename)
 {
 	u32 maxIndex = (u32)m_fileEntries.size();
 	u64 lastEnd = m_header.headerSize;
-	for (u32 fileIndex = 0; fileIndex < maxIndex; ++fileIndex)
+	if (entry.fileSize != 0)
 	{
-		FileEntry& thisEntry = m_fileEntries[fileIndex];
-		if ((thisEntry.flag & FILE_FLAG_DELETED) != 0)
+		//file with 0 size will alway be put to the end
+		for (u32 fileIndex = 0; fileIndex < maxIndex; ++fileIndex)
 		{
-			continue;
+			FileEntry& thisEntry = m_fileEntries[fileIndex];
+			if ((thisEntry.flag & FILE_FLAG_DELETED) != 0)
+			{
+				continue;
+			}
+			if (thisEntry.byteOffset - lastEnd >= entry.fileSize)
+			{
+				entry.byteOffset = lastEnd;
+				m_fileEntries.insert(m_fileEntries.begin() + fileIndex, entry);
+				m_filenames.insert(m_filenames.begin() + fileIndex, filename);
+				assert(m_filenames.size() == m_fileEntries.size());
+				//user may call addFile or removeFile before calling flush, so hash table need to be fixed
+				fixHashTable(fileIndex);
+				return;
+			}
+			lastEnd = thisEntry.byteOffset + thisEntry.fileSize;
 		}
-		if (thisEntry.byteOffset - lastEnd >= entry.fileSize)
-		{
-			entry.byteOffset = lastEnd;
-			m_fileEntries.insert(m_fileEntries.begin() + fileIndex, entry);
-			m_filenames.insert(m_filenames.begin() + fileIndex, filename);
-			assert(m_filenames.size() == m_fileEntries.size());
-			//user may call addFile or removeFile before calling flush, so hash table need to be fixed
-			fixHashTable(fileIndex);
-			return;
-		}
-		lastEnd = thisEntry.byteOffset + thisEntry.fileSize;
 	}
 	if (m_fileEntries.empty())
 	{
