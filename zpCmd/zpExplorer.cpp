@@ -499,6 +499,10 @@ void ZpExplorer::insertFileToTree(const string& filename, unsigned long fileSize
 				newNode.fileSize = fileSize;
 				node->children.push_back(newNode);
 			}
+			else
+			{
+				child->fileSize = fileSize;
+			}
 			return;
 		}
 		string dirName = filenameLeft.substr(0, pos);

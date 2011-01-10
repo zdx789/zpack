@@ -53,8 +53,6 @@ private:
 protected:
 	DECLARE_MESSAGE_MAP()
 public:
-	afx_msg void OnFileOpen();
-	afx_msg void OnFileNew();
 	afx_msg void OnEditAdd();
 	afx_msg void OnEditAddFolder();
 	afx_msg void OnEditDelete();

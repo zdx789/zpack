@@ -44,15 +44,13 @@ protected:  // control bar embedded members
 // Generated message map functions
 protected:
 	afx_msg int OnCreate(LPCREATESTRUCT lpCreateStruct);
-	afx_msg void OnUpdateViewStyles(CCmdUI* pCmdUI);
-	afx_msg void OnViewStyle(UINT nCommandID);
-	afx_msg void OnViewCustomize();
 	afx_msg LRESULT OnToolbarCreateNew(WPARAM wp, LPARAM lp);
 	DECLARE_MESSAGE_MAP()
 public:
 	afx_msg void OnFileNew();
 	afx_msg void OnFileOpen();
 	afx_msg void OnFileDefrag();
+	afx_msg void OnUpdateMenu(CCmdUI* pCmdUI);
 };
 
 

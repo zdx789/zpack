@@ -59,6 +59,7 @@ public:
 	afx_msg void OnEditAddFolder();
 	afx_msg void OnEditAdd();
 	afx_msg void OnEditExtract();
+	afx_msg void OnUpdateMenu(CCmdUI* pCmdUI);
 };
 
 #ifndef _DEBUG  // debug version in zpEditorView.cpp
