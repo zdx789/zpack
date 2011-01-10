@@ -26,13 +26,15 @@ const UINT uiLastUserToolBarId = uiFirstUserToolBarId + iMaxUserToolbars - 1;
 
 BEGIN_MESSAGE_MAP(CMainFrame, CFrameWndEx)
 	ON_WM_CREATE()
-	ON_UPDATE_COMMAND_UI_RANGE(AFX_ID_VIEW_MINIMUM, AFX_ID_VIEW_MAXIMUM, &CMainFrame::OnUpdateViewStyles)
-	ON_COMMAND_RANGE(AFX_ID_VIEW_MINIMUM, AFX_ID_VIEW_MAXIMUM, &CMainFrame::OnViewStyle)
-	ON_COMMAND(ID_VIEW_CUSTOMIZE, &CMainFrame::OnViewCustomize)
 	ON_REGISTERED_MESSAGE(AFX_WM_CREATETOOLBAR, &CMainFrame::OnToolbarCreateNew)
 	ON_COMMAND(ID_FILE_NEW, &CMainFrame::OnFileNew)
 	ON_COMMAND(ID_FILE_OPEN, &CMainFrame::OnFileOpen)
 	ON_COMMAND(ID_FILE_DEFRAG, &CMainFrame::OnFileDefrag)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_ADD, &CMainFrame::OnUpdateMenu)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_ADD_FOLDER, &CMainFrame::OnUpdateMenu)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_DELETE, &CMainFrame::OnUpdateMenu)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_EXTRACT, &CMainFrame::OnUpdateMenu)
+	ON_UPDATE_COMMAND_UI(ID_FILE_DEFRAG, &CMainFrame::OnUpdateMenu)
 END_MESSAGE_MAP()
 
 static UINT indicators[] =
@@ -104,8 +106,8 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 
 	// TODO: Delete these five lines if you don't want the toolbar and menubar to be dockable
 	//m_wndMenuBar.EnableDocking(CBRS_ALIGN_ANY);
-	m_wndToolBar.EnableDocking(CBRS_ALIGN_ANY);
-	EnableDocking(CBRS_ALIGN_ANY);
+	//m_wndToolBar.EnableDocking(CBRS_ALIGN_ANY);
+	//EnableDocking(CBRS_ALIGN_ANY);
 	//DockPane(&m_wndMenuBar);
 	DockPane(&m_wndToolBar);
 
@@ -130,6 +132,8 @@ int CMainFrame::OnCreate(LPCREATESTRUCT lpCreateStruct)
 		}
 	}
 
+	//CMenu* menu = m_wndToolBar.GetMenu();
+	//menu->EnableMenuItem(ID_EDIT_ADD, MF_BYCOMMAND|MF_DISABLED);
 	return 0;
 }
 
@@ -184,120 +188,6 @@ CzpEditorView* CMainFrame::GetRightPane()
 	return pView;
 }
 
-void CMainFrame::OnUpdateViewStyles(CCmdUI* pCmdUI)
-{
-	if (!pCmdUI)
-		return;
-
-	// TODO: customize or extend this code to handle choices on the View menu
-
-	CzpEditorView* pView = GetRightPane();
-
-	// if the right-hand pane hasn't been created or isn't a view,
-	// disable commands in our range
-
-	if (pView == NULL)
-		pCmdUI->Enable(FALSE);
-	else
-	{
-		DWORD dwStyle = pView->GetStyle() & LVS_TYPEMASK;
-
-		// if the command is ID_VIEW_LINEUP, only enable command
-		// when we're in LVS_ICON or LVS_SMALLICON mode
-
-		if (pCmdUI->m_nID == ID_VIEW_LINEUP)
-		{
-			if (dwStyle == LVS_ICON || dwStyle == LVS_SMALLICON)
-				pCmdUI->Enable();
-			else
-				pCmdUI->Enable(FALSE);
-		}
-		else
-		{
-			// otherwise, use dots to reflect the style of the view
-			pCmdUI->Enable();
-			BOOL bChecked = FALSE;
-
-			switch (pCmdUI->m_nID)
-			{
-			case ID_VIEW_DETAILS:
-				bChecked = (dwStyle == LVS_REPORT);
-				break;
-
-			case ID_VIEW_SMALLICON:
-				bChecked = (dwStyle == LVS_SMALLICON);
-				break;
-
-			case ID_VIEW_LARGEICON:
-				bChecked = (dwStyle == LVS_ICON);
-				break;
-
-			case ID_VIEW_LIST:
-				bChecked = (dwStyle == LVS_LIST);
-				break;
-
-			default:
-				bChecked = FALSE;
-				break;
-			}
-
-			pCmdUI->SetRadio(bChecked ? 1 : 0);
-		}
-	}
-}
-
-void CMainFrame::OnViewStyle(UINT nCommandID)
-{
-	// TODO: customize or extend this code to handle choices on the View menu
-	CzpEditorView* pView = GetRightPane();
-
-	// if the right-hand pane has been created and is a CzpEditorView,
-	// process the menu commands...
-	if (pView != NULL)
-	{
-		DWORD dwStyle = -1;
-
-		switch (nCommandID)
-		{
-		case ID_VIEW_LINEUP:
-			{
-				// ask the list control to snap to grid
-				CListCtrl& refListCtrl = pView->GetListCtrl();
-				refListCtrl.Arrange(LVA_SNAPTOGRID);
-			}
-			break;
-
-		// other commands change the style on the list control
-		case ID_VIEW_DETAILS:
-			dwStyle = LVS_REPORT;
-			break;
-
-		case ID_VIEW_SMALLICON:
-			dwStyle = LVS_SMALLICON;
-			break;
-
-		case ID_VIEW_LARGEICON:
-			dwStyle = LVS_ICON;
-			break;
-
-		case ID_VIEW_LIST:
-			dwStyle = LVS_LIST;
-			break;
-		}
-
-		// change the style; window will repaint automatically
-		if (dwStyle != -1)
-			pView->ModifyStyle(LVS_TYPEMASK, dwStyle);
-	}
-}
-
-void CMainFrame::OnViewCustomize()
-{
-	CMFCToolBarsCustomizeDialog* pDlgCust = new CMFCToolBarsCustomizeDialog(this, TRUE /* scan menus */);
-	pDlgCust->EnableUserDefinedToolbars();
-	pDlgCust->Create();
-}
-
 LRESULT CMainFrame::OnToolbarCreateNew(WPARAM wp,LPARAM lp)
 {
 	LRESULT lres = CFrameWndEx::OnToolbarCreateNew(wp,lp);
@@ -342,13 +232,12 @@ BOOL CMainFrame::LoadFrame(UINT nIDResource, DWORD dwDefaultStyle, CWnd* pParent
 			pUserToolbar->EnableCustomizeButton(TRUE, ID_VIEW_CUSTOMIZE, strCustomize);
 		}
 	}
-
 	return TRUE;
 }
 
 void CMainFrame::OnFileNew()
 {
-	CFileDialog dlg(TRUE, NULL, NULL, 0, "zpack archives (*.zpk)|*.zpk|All Files (*.*)|*.*||");
+	CFileDialog dlg(FALSE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, "zpack archives (*.zpk)|*.zpk|All Files (*.*)|*.*||");
 	if (dlg.DoModal() != IDOK)
 	{
 		return;
@@ -393,6 +282,11 @@ void CMainFrame::OnFileDefrag()
 		return;
 	}
 	zp::u64 fragSize = explorer.getPack()->countFragmentSize();
+	if (fragSize == 0)
+	{
+		::MessageBox(NULL, "There's not any fragment in this package.", "Information", MB_OK | MB_ICONINFORMATION);
+		return;
+	}
 	std::stringstream tip;
 	tip << "You can save " << fragSize << " bytes, It will take minutes, continue?";
 	if (::MessageBox(NULL, tip.str().c_str(), "Question", MB_YESNO | MB_ICONQUESTION) != IDYES)
@@ -400,4 +294,18 @@ void CMainFrame::OnFileDefrag()
 		return;
 	}
 	explorer.getPack()->defrag();
+}
+
+void CMainFrame::OnUpdateMenu(CCmdUI* pCmdUI)
+{
+	CzpEditorDoc* document = (CzpEditorDoc*)GetActiveDocument();
+	if (document == NULL)
+	{
+		pCmdUI->Enable(FALSE);
+	}
+	else
+	{
+		ZpExplorer& explorer = document->GetZpExplorer();
+		pCmdUI->Enable(explorer.isOpen());
+	}
 }

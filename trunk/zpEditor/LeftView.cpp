@@ -22,8 +22,6 @@ IMPLEMENT_DYNCREATE(CLeftView, CTreeView)
 BEGIN_MESSAGE_MAP(CLeftView, CTreeView)
 	ON_NOTIFY_REFLECT(TVN_SELCHANGED, OnSelectChanged)
 	ON_WM_KEYDOWN()
-	//ON_COMMAND(ID_FILE_OPEN, &CLeftView::OnFileOpen)
-	//ON_COMMAND(ID_FILE_NEW, &CLeftView::OnFileNew)
 	ON_COMMAND(ID_EDIT_ADD, &CLeftView::OnEditAdd)
 	ON_COMMAND(ID_EDIT_ADD_FOLDER, &CLeftView::OnEditAddFolder)
 	ON_COMMAND(ID_EDIT_DELETE, &CLeftView::OnEditDelete)
@@ -186,47 +184,6 @@ CzpEditorDoc* CLeftView::GetDocument() // non-debug version is inline
 
 // CLeftView message handlers
 
-
-void CLeftView::OnFileOpen()
-{
-	CFileDialog dlg(TRUE, NULL, NULL, 0, "zpack files (*.zpk)|*.zpk|All Files (*.*)|*.*||");
-	if (dlg.DoModal() != IDOK)
-	{
-		return;
-	}
-	ZpExplorer& explorer = GetDocument()->GetZpExplorer();
-	CString filename = dlg.GetPathName();
-	if (!explorer.open(filename.GetString()))
-	{
-		::MessageBox(NULL, "Invalid zpack file.", "Error", MB_OK | MB_ICONERROR);
-	}
-	CTreeCtrl& treeCtrl = GetTreeCtrl();
-	treeCtrl.DeleteAllItems();
-	m_pDocument->UpdateAllViews(NULL);
-}
-
-void CLeftView::OnFileNew()
-{
-	CFileDialog dlg(TRUE, NULL, NULL, 0, "zpack archives (*.zpk)|*.zpk|All Files (*.*)|*.*||");
-	if (dlg.DoModal() != IDOK)
-	{
-		return;
-	}
-	CString filename = dlg.GetPathName();
-	if (dlg.GetFileExt().IsEmpty())
-	{
-		filename += ".zpk";
-	}
-	ZpExplorer& explorer = GetDocument()->GetZpExplorer();
-	if (!explorer.create(filename.GetString(), ""))
-	{
-		::MessageBox(NULL, "Create package failed.", "Error", MB_OK | MB_ICONERROR);
-	}
-	CTreeCtrl& treeCtrl = GetTreeCtrl();
-	treeCtrl.DeleteAllItems();
-	m_pDocument->UpdateAllViews(NULL);
-}
-
 void CLeftView::OnEditAdd()
 {
 	CFileDialog dlg(TRUE, NULL, NULL, OFN_ALLOWMULTISELECT);
@@ -269,7 +226,11 @@ void CLeftView::OnEditDelete()
 {
 	ZpExplorer& explorer = GetDocument()->GetZpExplorer();
 	explorer.setCallback(NULL, NULL);
-
+	if (explorer.currentNode() == explorer.rootNode())
+	{
+		::MessageBox(NULL, "This folder can not be deleted.", "Information", MB_OK | MB_ICONINFORMATION);
+		return;
+	}
 	std::string warning = "Do you want to delete ";
 	warning += "\"";
 	warning += explorer.currentNode()->name;

@@ -34,6 +34,11 @@ BEGIN_MESSAGE_MAP(CzpEditorView, CListView)
 	ON_COMMAND(ID_EDIT_ADD, &CzpEditorView::OnEditAdd)
 	ON_COMMAND(ID_EDIT_DELETE, &CzpEditorView::OnEditDelete)
 	ON_COMMAND(ID_EDIT_EXTRACT, &CzpEditorView::OnEditExtract)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_ADD, &CzpEditorView::OnUpdateMenu)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_ADD_FOLDER, &CzpEditorView::OnUpdateMenu)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_DELETE, &CzpEditorView::OnUpdateMenu)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_EXTRACT, &CzpEditorView::OnUpdateMenu)
+	ON_UPDATE_COMMAND_UI(ID_FILE_DEFRAG, &CzpEditorView::OnUpdateMenu)
 END_MESSAGE_MAP()
 
 // CzpEditorView construction/destruction
@@ -254,6 +259,12 @@ void CzpEditorView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 		ZpNode* node = getSelectedNode();
 		enterDirectory(node);
 	}
+	else if (nChar == VK_BACK)
+	{
+		ZpExplorer& explorer = GetDocument()->GetZpExplorer();
+		explorer.enterDir("..");
+		m_pDocument->UpdateAllViews(NULL);
+	}
 	CListView::OnKeyDown(nChar, nRepCnt, nFlags);
 }
 
@@ -385,4 +396,24 @@ void CzpEditorView::enterDirectory(ZpNode* node)
 		return;
 	}
 	m_pDocument->UpdateAllViews(NULL);
+}
+
+void CzpEditorView::OnUpdateMenu(CCmdUI* pCmdUI)
+{
+	if (m_pDocument == NULL)
+	{
+		pCmdUI->Enable(FALSE);
+	}
+	else
+	{
+		ZpExplorer& explorer = GetDocument()->GetZpExplorer();
+		if (pCmdUI->m_nID == ID_EDIT_DELETE)
+		{
+			pCmdUI->Enable(explorer.isOpen() && getSelectedNode() != NULL);
+		}
+		else
+		{
+			pCmdUI->Enable(explorer.isOpen());
+		}
+	}
 }
