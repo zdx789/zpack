@@ -258,7 +258,7 @@ bool Package::defrag()
 	}
 	string tempFilename = m_packageName + "_t";
 	fstream tempFile;
-	tempFile.open(tempFilename, std::ios_base::out | std::ios_base::trunc | std::ios_base::binary);
+	tempFile.open(tempFilename.c_str(), std::ios_base::out | std::ios_base::trunc | std::ios_base::binary);
 	if (!tempFile.is_open())
 	{
 		return false;
@@ -316,7 +316,7 @@ bool Package::defrag()
 	m_stream.close();
 	tempFile.close();
 
-	m_stream.open(tempFilename, ios_base::in | ios_base::out | ios_base::binary);	//only for flush()
+	m_stream.open(tempFilename.c_str(), ios_base::in | ios_base::out | ios_base::binary);	//only for flush()
 	assert(m_stream.is_open());
 	m_dirty = true;
 	flush();	//no need to rebuild hash table here, but it's ok b/c defrag will be slow anyway

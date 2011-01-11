@@ -108,7 +108,7 @@ private:
 	std::string		m_basePath;		//base path of external path (of file system)
 	FileCallback	m_callback;
 	void*			m_callbackParam;
-	size_t			m_fileCount;
+	unsigned long	m_fileCount;
 };
 
 #endif

@@ -315,7 +315,7 @@ bool ZpExplorer::addFile(const string& filename, const string& relativePath)
 
 	zp::u32 fileSize = 0;
 	fstream stream;
-	stream.open(filename, ios_base::in | ios_base::binary);
+	stream.open(filename.c_str(), ios_base::in | ios_base::binary);
 	if (stream.is_open())
 	{
 		stream.seekg(0, ios::end);
@@ -356,8 +356,8 @@ void ZpExplorer::countChildRecursively(const ZpNode* node)
 	{
 		++m_fileCount;
 	}
-	for (list<ZpNode>::const_iterator iter = node->children.cbegin();
-		iter != node->children.cend();
+	for (list<ZpNode>::const_iterator iter = node->children.begin();
+		iter != node->children.end();
 		++iter)
 	{
 		countChildRecursively(&(*iter));
