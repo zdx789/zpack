@@ -39,11 +39,11 @@ BOOL ProgressDialog::OnInitDialog()
 	case OP_ADD:
 		SetWindowText("Adding");
 		break;
-	case OP_DELETE:
-		SetWindowText("Deleting");
-		break;
 	case OP_EXTRACT:
 		SetWindowText("Extracting");
+		break;
+	case OP_DEFRAG:
+		SetWindowText("Moving");
 		break;
 	}
 	
@@ -110,7 +110,7 @@ void ProgressDialog::OnTimer(UINT_PTR nIDEvent)
 	}
 }
 
-bool ZpCallback(const std::string& path, void* param)
+bool ZpCallback(const char* path, void* param)
 {
 	ProgressDialog* dlg = (ProgressDialog*)param;
 	if (dlg == NULL)
@@ -132,6 +132,12 @@ DWORD WINAPI ProgressDialog::threadFunc(LPVOID pointer)
 {
 	ProgressDialog* dlg = (ProgressDialog*)pointer;
 	dlg->m_explorer->setCallback(ZpCallback, dlg);
+	if (dlg->m_operation == ProgressDialog::OP_DEFRAG)
+	{
+		dlg->m_explorer->defrag();
+		dlg->m_running = false;
+		return 0;
+	}
 	for (size_t i = 0; i < dlg->m_params->size(); ++i)
 	{
 		const std::pair<std::string, std::string>& p = dlg->m_params->at(i);
@@ -139,8 +145,6 @@ DWORD WINAPI ProgressDialog::threadFunc(LPVOID pointer)
 		{
 		case ProgressDialog::OP_ADD:
 			dlg->m_explorer->add(p.first, p.second);
-			break;
-		case ProgressDialog::OP_DELETE:
 			break;
 		case ProgressDialog::OP_EXTRACT:
 			dlg->m_explorer->extract(p.first, p.second);

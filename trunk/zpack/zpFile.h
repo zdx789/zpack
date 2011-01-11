@@ -4,8 +4,6 @@
 #include "zpack.h"
 #include <fstream>
 
-#define FILE_CACHE_SIZE	4096
-
 namespace zp
 {
 

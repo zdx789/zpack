@@ -12,6 +12,8 @@ typedef unsigned __int64 u64;
 const u32 FLAG_READONLY = 1;
 const u32 FLAG_REPLACE = 2;
 
+typedef bool (*Callback)(const char* path, void* param);
+
 class IFile;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -22,9 +24,9 @@ public:
 	virtual bool hasFile(const char* filename) const = 0;
 	virtual IFile* openFile(const char* filename) = 0;
 	virtual void closeFile(IFile* file) = 0;
-	
+
 	virtual u32 getFileCount() const = 0;
-	virtual bool getFileInfoByIndex(u32 index, char* filenameBuffer, u32 filenameBufferSize, u32* fileSize = 0) = 0;
+	virtual bool getFileInfoByIndex(u32 index, char* filenameBuffer, u32 filenameBufferSize, u32* fileSize = 0) const = 0;
 
 	//package manipulation fuctions
 	virtual bool addFile(const char* externalFilename, const char* filename, u32 flag = FLAG_REPLACE) = 0;
@@ -33,7 +35,7 @@ public:
 	virtual void flush() = 0;
 
 	virtual u64 countFragmentSize() = 0;
-	virtual bool defrag() = 0;	//can be very slow, don't call this all the time
+	virtual bool defrag(Callback callback, void* callbackParam) = 0;	//can be very slow, don't call this all the time
 
 protected:
 	virtual ~IPackage(){}

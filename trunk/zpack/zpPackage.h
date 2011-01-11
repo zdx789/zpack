@@ -54,7 +54,7 @@ public:
 	virtual void closeFile(IFile* file);
 
 	virtual u32 getFileCount() const;
-	virtual bool getFileInfoByIndex(u32 index, char* filenameBuffer, u32 filenameBufferSize, u32* fileSize = NULL);
+	virtual bool getFileInfoByIndex(u32 index, char* filenameBuffer, u32 filenameBufferSize, u32* fileSize = NULL) const;
 
 	virtual bool addFile(const char* externalFilename, const char* filename, u32 flag = FLAG_REPLACE);
 	virtual bool removeFile(const char* filename);
@@ -62,7 +62,7 @@ public:
 	virtual void flush();
 
 	virtual u64 countFragmentSize();
-	virtual bool defrag();
+	virtual bool defrag(Callback callback, void* callbackParam);
 
 private:
 	bool readHeader();

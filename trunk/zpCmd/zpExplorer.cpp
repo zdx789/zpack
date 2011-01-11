@@ -31,7 +31,7 @@ ZpExplorer::~ZpExplorer()
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-void ZpExplorer::setCallback(FileCallback callback, void* param)
+void ZpExplorer::setCallback(zp::Callback callback, void* param)
 {
 	m_callback = callback;
 	m_callbackParam = param;
@@ -96,6 +96,16 @@ void ZpExplorer::close()
 bool ZpExplorer::isOpen() const
 {
 	return (m_pack != NULL);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+bool ZpExplorer::defrag()
+{
+	if (m_pack == NULL)
+	{
+		return false;
+	}
+	return m_pack->defrag(m_callback, m_callbackParam);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -303,7 +313,7 @@ void ZpExplorer::clear()
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool ZpExplorer::addFile(const string& filename, const string& relativePath)
 {
-	if (m_callback != NULL && !m_callback(relativePath, m_callbackParam))
+	if (m_callback != NULL && !m_callback(relativePath.c_str(), m_callbackParam))
 	{
 		return false;
 	}
@@ -387,7 +397,7 @@ bool ZpExplorer::removeChildRecursively(ZpNode* node, string path)
 	assert(node != NULL && m_pack != NULL);
 	if (!node->isDirectory)
 	{
-		if (m_callback != NULL && !m_callback(node->name, m_callbackParam))
+		if (m_callback != NULL && !m_callback(node->name.c_str(), m_callbackParam))
 		{
 			return false;
 		}
@@ -427,7 +437,7 @@ bool ZpExplorer::extractRecursively(ZpNode* node, string externalPath, string in
 	externalPath += node->name;
 	if (!node->isDirectory)
 	{
-		if (m_callback != NULL && !m_callback(internalPath, m_callbackParam))
+		if (m_callback != NULL && !m_callback(internalPath.c_str(), m_callbackParam))
 		{
 			return false;
 		}

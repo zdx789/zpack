@@ -3,6 +3,7 @@
 
 #include <list>
 #include <string>
+#include "zpack.h"
 
 namespace zp
 {
@@ -12,8 +13,6 @@ class IPackage;
 //use '/' and "/" on linux or mac
 #define DIR_CHAR '\\'
 #define DIR_STR "\\"
-
-typedef bool (*FileCallback)(const std::string& path, void* param);
 
 struct ZpNode
 {
@@ -39,15 +38,17 @@ public:
 	ZpExplorer();
 	~ZpExplorer();
 
-	void setCallback(FileCallback callback, void* param);
+	void setCallback(zp::Callback callback, void* param);
 
 	bool open(const std::string& path);
 	bool create(const std::string& path, const std::string& inputPath);
 	void close();
 	bool isOpen() const;
 
+	bool defrag();
+
 	zp::IPackage* getPack();
-	
+
 	const std::string& packageFilename() const;
 
 	bool enterDir(const std::string& path);
@@ -106,7 +107,7 @@ private:
 	std::string		m_currentPath;
 	std::string		m_workingPath;	//user can operate on directory other than current one
 	std::string		m_basePath;		//base path of external path (of file system)
-	FileCallback	m_callback;
+	zp::Callback	m_callback;
 	void*			m_callbackParam;
 	unsigned long	m_fileCount;
 };

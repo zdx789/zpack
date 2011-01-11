@@ -46,8 +46,8 @@ public:
 	enum Operation
 	{
 		OP_ADD = 0,
-		OP_DELETE,
-		OP_EXTRACT
+		OP_EXTRACT,
+		OP_DEFRAG
 	};
 	Operation	m_operation;
 	const std::vector<std::pair<std::string, std::string>>*	m_params;
