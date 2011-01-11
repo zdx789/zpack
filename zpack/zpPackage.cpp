@@ -89,7 +89,7 @@ u32 Package::getFileCount() const
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-bool Package::getFileInfoByIndex(u32 index, char* filenameBuffer, u32 filenameBufferSize, u32* fileSize)
+bool Package::getFileInfoByIndex(u32 index, char* filenameBuffer, u32 filenameBufferSize, u32* fileSize) const
 {
 	if (index >= m_filenames.size())
 	{
@@ -250,13 +250,13 @@ u64 Package::countFragmentSize()
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-bool Package::defrag()
+bool Package::defrag(Callback callback, void* callbackParam)
 {
 	if (m_readonly || m_dirty)
 	{
 		return false;
 	}
-	string tempFilename = m_packageName + "_t";
+	string tempFilename = m_packageName + "_";
 	fstream tempFile;
 	tempFile.open(tempFilename.c_str(), std::ios_base::out | std::ios_base::trunc | std::ios_base::binary);
 	if (!tempFile.is_open())
@@ -275,6 +275,13 @@ bool Package::defrag()
 	for (u32 i = 0; i < m_fileEntries.size(); ++i)
 	{
 		FileEntry& entry = m_fileEntries[i];
+		if (callback != NULL && !callback(m_filenames[i].c_str(), callbackParam))
+		{
+			//stop
+			tempFile.close();
+			remove(tempFilename.c_str());
+			return false;
+		}
 		if (entry.fileSize == 0)
 		{
 			entry.byteOffset = nextPos;

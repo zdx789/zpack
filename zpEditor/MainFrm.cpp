@@ -9,6 +9,7 @@
 #include "LeftView.h"
 #include "zpEditorView.h"
 #include "zpEditorDoc.h"
+#include "ProgressDialog.h"
 #include "zpack.h"
 #include <sstream>
 
@@ -293,7 +294,14 @@ void CMainFrame::OnFileDefrag()
 	{
 		return;
 	}
-	explorer.getPack()->defrag();
+
+	ProgressDialog progressDlg;
+	progressDlg.m_explorer = &(document->GetZpExplorer());
+	progressDlg.m_running = true;
+	progressDlg.m_params = NULL;
+	progressDlg.m_operation = ProgressDialog::OP_DEFRAG;
+	progressDlg.m_fileCount = explorer.getPack()->getFileCount();
+	progressDlg.DoModal();
 }
 
 void CMainFrame::OnUpdateMenu(CCmdUI* pCmdUI)
