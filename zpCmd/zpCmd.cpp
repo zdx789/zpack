@@ -12,7 +12,7 @@
 
 using namespace std;
 
-bool zpcallback(const string& path, void* param)
+bool zpcallback(const char* path, void* param)
 {
 	cout << path << endl;
 	return true;
@@ -107,7 +107,7 @@ CMD_PROC(defrag)
 	{
 		return false;
 	}
-	return (pack != NULL && pack->defrag());
+	return (pack != NULL && pack->defrag(NULL, NULL));
 }
 
 CMD_PROC(help)
