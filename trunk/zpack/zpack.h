@@ -1,8 +1,27 @@
 #ifndef __ZPACK_H__
 #define __ZPACK_H__
 
+#include <string>
+
+#if defined (_MSC_VER) && defined (UNICODE)
+	#define ZP_USE_WCHAR
+#endif
+
 namespace zp
 {
+#if defined (ZP_USE_WCHAR)
+	typedef wchar_t Char;
+	#ifndef _T
+		#define _T(str) L##str
+	#endif
+	typedef std::wstring String;
+#else
+	typedef char Char;
+	#ifndef _T
+		#define _T(str) str
+	#endif
+	typedef std::string String;
+#endif
 
 #define ZP_CASE_SENSITIVE	0
 
@@ -12,7 +31,7 @@ typedef unsigned __int64 u64;
 const u32 FLAG_READONLY = 1;
 const u32 FLAG_REPLACE = 2;
 
-typedef bool (*Callback)(const char* path, void* param);
+typedef bool (*Callback)(const Char* path, void* param);
 
 class IFile;
 
@@ -21,16 +40,16 @@ class IPackage
 {
 public:
 	//readonly functions, not available when package is dirty
-	virtual bool hasFile(const char* filename) const = 0;
-	virtual IFile* openFile(const char* filename) = 0;
+	virtual bool hasFile(const Char* filename) const = 0;
+	virtual IFile* openFile(const Char* filename) = 0;
 	virtual void closeFile(IFile* file) = 0;
 
 	virtual u32 getFileCount() const = 0;
-	virtual bool getFileInfoByIndex(u32 index, char* filenameBuffer, u32 filenameBufferSize, u32* fileSize = 0) const = 0;
+	virtual bool getFileInfoByIndex(u32 index, Char* filenameBuffer, u32 filenameBufferSize, u32* fileSize = 0) const = 0;
 
 	//package manipulation fuctions
-	virtual bool addFile(const char* externalFilename, const char* filename, u32 flag = FLAG_REPLACE) = 0;
-	virtual bool removeFile(const char* filename) = 0;
+	virtual bool addFile(const Char* externalFilename, const Char* filename, u32 flag = FLAG_REPLACE) = 0;
+	virtual bool removeFile(const Char* filename) = 0;
 	virtual bool dirty() const = 0;
 	virtual void flush() = 0;
 
@@ -54,8 +73,8 @@ protected:
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-IPackage* create(const char* filename, u32 flag = 0);
-IPackage* open(const char* filename, u32 flag = FLAG_READONLY);
+IPackage* create(const Char* filename, u32 flag = 0);
+IPackage* open(const Char* filename, u32 flag = FLAG_READONLY);
 void close(IPackage* package);
 
 }

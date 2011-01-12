@@ -53,7 +53,7 @@ BOOL CzpEditorDoc::OnOpenDocument(LPCTSTR lpszPathName)
 {
 	if (!m_explorer.open(lpszPathName))
 	{
-		::MessageBox(NULL, "Failed to open file.", "Error", MB_OK | MB_ICONERROR);
+		::MessageBox(NULL, _T("Failed to open file."), _T("Error"), MB_OK | MB_ICONERROR);
 		return FALSE;
 	}
 	UpdateAllViews(NULL, TRUE);

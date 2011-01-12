@@ -12,18 +12,28 @@
 
 using namespace std;
 
-bool zpcallback(const char* path, void* param)
+#ifdef UNICODE
+	#define COUT wcout
+	#define CIN wcin
+	typedef std::wistringstream IStringStream;
+#else
+	#define COUT cout
+	#define CIN cin
+	typedef std::istringstream IStringStream;
+#endif
+
+bool zpcallback(const zp::Char* path, void* param)
 {
-	cout << path << endl;
+	COUT << path << endl;
 	return true;
 }
 
-typedef bool (*CommandProc)(const string& param0, const string& param1);
+typedef bool (*CommandProc)(const zp::String& param0, const zp::String& param1);
 
-map<string, CommandProc> g_commandHandlers;
+map<zp::String, CommandProc> g_commandHandlers;
 
-#define CMD_PROC(cmd) bool cmd##_proc(const string& param0, const string& param1)
-#define REGISTER_CMD(cmd) g_commandHandlers[#cmd] = &cmd##_proc;
+#define CMD_PROC(cmd) bool cmd##_proc(const zp::String& param0, const zp::String& param1)
+#define REGISTER_CMD(cmd) g_commandHandlers[_T(#cmd)] = &cmd##_proc;
 
 ZpExplorer g_explorer;
 
@@ -58,11 +68,11 @@ CMD_PROC(dir)
 	{
 		if (iter->isDirectory)
 		{
-			cout << "  <" << iter->name << ">" << endl; 
+			COUT << _T("  <") << iter->name << _T(">") << endl; 
 		}
 		else
 		{
-			cout << "  " << iter->name << endl; 
+			COUT << _T("  ") << iter->name << endl; 
 		}
 	}
 	return true;
@@ -96,7 +106,7 @@ CMD_PROC(fragment)
 		return false;
 	}
 	unsigned __int64 fragSize = pack->countFragmentSize();
-	cout << "fragment:" << fragSize << " bytes" << endl;
+	COUT << "fragment:" << fragSize << " bytes" << endl;
 	return true;
 }
 
@@ -112,7 +122,7 @@ CMD_PROC(defrag)
 
 CMD_PROC(help)
 {
-#define HELP_ITEM(cmd, explain) cout << cmd << endl << "    "explain << endl;
+#define HELP_ITEM(cmd, explain) COUT << cmd << endl << "    "explain << endl;
 	HELP_ITEM("create [package path] [initial dir path]", "create a package from scratch");
 	HELP_ITEM("open [package path]", "open an existing package");
 	HELP_ITEM("close", "close current package");
@@ -144,40 +154,40 @@ int _tmain(int argc, _TCHAR* argv[])
 	REGISTER_CMD(defrag);
 	REGISTER_CMD(help);
 
-	cout << "please type <help>" << endl;
+	COUT << _T("please type <help>") << endl;
 	while (true)
 	{
-		const std::string packName = g_explorer.packageFilename();
+		const zp::String packName = g_explorer.packageFilename();
 		if (!packName.empty())
 		{
-			cout << packName;
+			COUT << packName;
 			if (g_explorer.isOpen())
 			{
-				cout << DIR_STR << g_explorer.currentPath() << "\b";	//delete extra '\'
+				COUT << DIR_STR << g_explorer.currentPath() << _T("\b");	//delete extra '\'
 			}
-			cout << ">";
+			COUT << _T(">");
 		}
 		else
 		{
-			cout << "zp>";
+			COUT << _T("zp>");
 		}
-		string input, command, param0, param1;
-		getline(cin, input);
+		zp::String input, command, param0, param1;
+		getline(CIN, input);
 
 		size_t pos = 0;
 
-		istringstream iss(input, istringstream::in);
+		IStringStream iss(input, IStringStream::in);
 		iss >> command;
 		iss >> param0;
 		iss >> param1;
-		map<string, CommandProc>::iterator found = g_commandHandlers.find(command);
+		map<zp::String, CommandProc>::iterator found = g_commandHandlers.find(command);
 		if (found == g_commandHandlers.end())
 		{
-			cout << "<" << command << "> command not found." << endl;
+			COUT << _T("<") << command << _T("> command not found.") << endl;
 		}
 		else if (!found->second(param0, param1))
 		{
-			cout << "<" << command << "> execute failed." << endl;
+			COUT << _T("<") << command << _T("> execute failed.") << endl;
 		}
 	}
 	return 0;

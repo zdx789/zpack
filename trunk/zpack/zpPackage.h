@@ -9,6 +9,16 @@
 namespace zp
 {
 
+#if defined (ZP_USE_WCHAR)
+	typedef std::wistringstream IStringStream;
+	#define Remove _wremove
+	#define Rename _wrename
+#else
+	typedef std::istringstream IStringStream;
+	#define Remove remove
+	#define Rename rename
+#endif
+
 const u32 PACKAGE_FILE_SIGN = 'KAPZ';
 const u32 CURRENT_VERSION = '0010';
 
@@ -44,20 +54,20 @@ struct FileEntry
 class Package : public IPackage
 {
 public:
-	Package(const char* filename, bool readonly);
+	Package(const Char* filename, bool readonly);
 	~Package();
 
 	bool valid() const;
 
-	virtual bool hasFile(const char* filename) const;
-	virtual IFile* openFile(const char* filename);
+	virtual bool hasFile(const Char* filename) const;
+	virtual IFile* openFile(const Char* filename);
 	virtual void closeFile(IFile* file);
 
 	virtual u32 getFileCount() const;
-	virtual bool getFileInfoByIndex(u32 index, char* filenameBuffer, u32 filenameBufferSize, u32* fileSize = NULL) const;
+	virtual bool getFileInfoByIndex(u32 index, Char* filenameBuffer, u32 filenameBufferSize, u32* fileSize = NULL) const;
 
-	virtual bool addFile(const char* externalFilename, const char* filename, u32 flag = FLAG_REPLACE);
-	virtual bool removeFile(const char* filename);
+	virtual bool addFile(const Char* externalFilename, const Char* filename, u32 flag = FLAG_REPLACE);
+	virtual bool removeFile(const Char* filename);
 	virtual bool dirty() const;
 	virtual void flush();
 
@@ -70,22 +80,22 @@ private:
 	bool readFilenames();
 
 	bool buildHashTable();
-	int getFileIndex(const char* filename) const;
-	void insertFile(FileEntry& entry, const char* filename);
+	int getFileIndex(const Char* filename) const;
+	void insertFile(FileEntry& entry, const Char* filename);
 	
-	u32 stringHash(const char* str, u32 seed) const;
+	u32 stringHash(const Char* str, u32 seed) const;
 
 	void fixHashTable(u32 index);
 
 private:
-	std::string					m_packageName;
-	std::fstream				m_stream;
-	PackageHeader				m_header;
-	std::vector<int>			m_hashTable;
-	std::vector<FileEntry>		m_fileEntries;
-	std::vector<std::string>	m_filenames;
-	bool						m_readonly;
-	bool						m_dirty;
+	String					m_packageName;
+	std::fstream			m_stream;
+	PackageHeader			m_header;
+	std::vector<int>		m_hashTable;
+	std::vector<FileEntry>	m_fileEntries;
+	std::vector<String>		m_filenames;
+	bool					m_readonly;
+	bool					m_dirty;
 };
 
 }

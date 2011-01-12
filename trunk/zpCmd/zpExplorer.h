@@ -11,16 +11,16 @@ class IPackage;
 }
 
 //use '/' and "/" on linux or mac
-#define DIR_CHAR '\\'
-#define DIR_STR "\\"
+#define DIR_CHAR _T('\\')
+#define DIR_STR _T("\\")
 
 struct ZpNode
 {
 	ZpNode() : userData(NULL){}
 
-	std::string			name;
+	zp::String			name;
 #if !(ZP_CASE_SENSITIVE)
-	std::string			lowerName;
+	zp::String			lowerName;
 #endif
 	std::list<ZpNode>	children;
 	ZpNode*				parent;
@@ -31,8 +31,8 @@ struct ZpNode
 
 class ZpExplorer
 {
-	friend bool addPackFile(const std::string& filename, void* param);
-	friend bool countFile(const std::string& filename, void* param);
+	friend bool addPackFile(const zp::String& filename, void* param);
+	friend bool countFile(const zp::String& filename, void* param);
 
 public:
 	ZpExplorer();
@@ -40,8 +40,8 @@ public:
 
 	void setCallback(zp::Callback callback, void* param);
 
-	bool open(const std::string& path);
-	bool create(const std::string& path, const std::string& inputPath);
+	bool open(const zp::String& path);
+	bool create(const zp::String& path, const zp::String& inputPath);
 	void close();
 	bool isOpen() const;
 
@@ -49,44 +49,44 @@ public:
 
 	zp::IPackage* getPack();
 
-	const std::string& packageFilename() const;
+	const zp::String& packageFilename() const;
 
-	bool enterDir(const std::string& path);
+	bool enterDir(const zp::String& path);
 
 	//srcPath can't be empty
 	//if dstPath is empty, file/dir will be add to current path of package
-	bool add(const std::string& srcPath, const std::string& dstPath);
+	bool add(const zp::String& srcPath, const zp::String& dstPath);
 
-	bool remove(const std::string& path);
+	bool remove(const zp::String& path);
 	
 	//if srcPath is empty, current path of package will be extracted
 	//if dstPath is empty, file/dir will be extracted to current path of system
-	bool extract(const std::string& srcPath, const std::string& dstPath);
+	bool extract(const zp::String& srcPath, const zp::String& dstPath);
 
 	void setCurrentNode(const ZpNode* node);
 	const ZpNode* currentNode() const;
 	const ZpNode* rootNode() const;
 
-	const std::string& currentPath() const;
-	void getNodePath(const ZpNode* node, std::string& path) const;
+	const zp::String& currentPath() const;
+	void getNodePath(const ZpNode* node, zp::String& path) const;
 
-	unsigned long countDiskFile(const std::string& path);
+	unsigned long countDiskFile(const zp::String& path);
 	unsigned long countNodeFile(const ZpNode* node);
 
 private:
 	void clear();
 
-	bool addFile(const std::string& externalPath, const std::string& internalPath);
-	bool extractFile(const std::string& externalPath, const std::string& internalPath);
+	bool addFile(const zp::String& externalPath, const zp::String& internalPath);
+	bool extractFile(const zp::String& externalPath, const zp::String& internalPath);
 
 	void countChildRecursively(const ZpNode* node);
 
 	bool removeChild(ZpNode* node, ZpNode* child);
-	bool removeChildRecursively(ZpNode* node, std::string path);
+	bool removeChildRecursively(ZpNode* node, zp::String path);
 
-	bool extractRecursively(ZpNode* node, std::string externalPath, std::string internalPath);
+	bool extractRecursively(ZpNode* node, zp::String externalPath, zp::String internalPath);
 
-	void insertFileToTree(const std::string& filename, unsigned long fileSize, bool checkFileExist);
+	void insertFileToTree(const zp::String& filename, unsigned long fileSize, bool checkFileExist);
 
 	enum FindType
 	{
@@ -94,19 +94,19 @@ private:
 		FIND_FILE = 1,
 		FIND_DIR = 2
 	};
-	ZpNode* findChild(ZpNode* node, const std::string& name, FindType type);
-	ZpNode* findChildRecursively(ZpNode* node, const std::string& name, FindType type);
+	ZpNode* findChild(ZpNode* node, const zp::String& name, FindType type);
+	ZpNode* findChildRecursively(ZpNode* node, const zp::String& name, FindType type);
 
-	std::string getArchivedName(const std::string& filename);
+	zp::String getArchivedName(const zp::String& filename);
 
 private:
 	zp::IPackage*	m_pack;
 	ZpNode			m_root;
 	ZpNode*			m_currentNode;
-	std::string		m_packageFilename;
-	std::string		m_currentPath;
-	std::string		m_workingPath;	//user can operate on directory other than current one
-	std::string		m_basePath;		//base path of external path (of file system)
+	zp::String		m_packageFilename;
+	zp::String		m_currentPath;
+	zp::String		m_workingPath;	//user can operate on directory other than current one
+	zp::String		m_basePath;		//base path of external path (of file system)
 	zp::Callback	m_callback;
 	void*			m_callbackParam;
 	unsigned long	m_fileCount;
