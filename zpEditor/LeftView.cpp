@@ -82,10 +82,10 @@ void CLeftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 	{
 		return;
 	}
-	std::string packName;
-	const std::string& packFilename = explorer.packageFilename();
+	zp::String packName;
+	const zp::String& packFilename = explorer.packageFilename();
 	size_t slashPos = packFilename.find_last_of('\\');
-	if (slashPos == std::string::npos)
+	if (slashPos == zp::String::npos)
 	{
 		packName = packFilename;
 	}
@@ -192,14 +192,14 @@ void CLeftView::OnEditAdd()
 		return;
 	}
 	size_t fileCount = 0;
-	std::vector<std::pair<std::string, std::string>> params;
+	std::vector<std::pair<zp::String, zp::String>> params;
 	ZpExplorer& explorer = GetDocument()->GetZpExplorer();
 	POSITION pos = dlg.GetStartPosition();
 	while (pos)
 	{
 		CString filename = dlg.GetNextPathName(pos);
 		fileCount += explorer.countDiskFile(filename.GetString());
-		params.push_back(std::make_pair(filename.GetString(), ""));
+		params.push_back(std::make_pair(filename.GetString(), _T("")));
 	}
 	startOperation(ProgressDialog::OP_ADD, fileCount, &params);
 	m_pDocument->UpdateAllViews(NULL);
@@ -207,7 +207,7 @@ void CLeftView::OnEditAdd()
 
 void CLeftView::OnEditAddFolder()
 {
-	CFolderDialog folderDlg(NULL, "Select folder to add to package.");
+	CFolderDialog folderDlg(NULL, _T("Select folder to add to package."));
 	if (folderDlg.DoModal() != IDOK)
 	{
 		return;
@@ -216,8 +216,8 @@ void CLeftView::OnEditAddFolder()
 	ZpExplorer& explorer = GetDocument()->GetZpExplorer();
 	size_t fileCount = explorer.countDiskFile(path.GetString());
 
-	std::vector<std::pair<std::string, std::string>> params;
-	params.push_back(std::make_pair(path.GetString(), ""));
+	std::vector<std::pair<zp::String, zp::String>> params;
+	params.push_back(std::make_pair(path.GetString(), _T("")));
 	startOperation(ProgressDialog::OP_ADD, fileCount, &params);
 	m_pDocument->UpdateAllViews(NULL);
 }
@@ -228,35 +228,35 @@ void CLeftView::OnEditDelete()
 	explorer.setCallback(NULL, NULL);
 	if (explorer.currentNode() == explorer.rootNode())
 	{
-		::MessageBox(NULL, "This folder can not be deleted.", "Information", MB_OK | MB_ICONINFORMATION);
+		::MessageBox(NULL, _T("This folder can not be deleted."), _T("Information"), MB_OK | MB_ICONINFORMATION);
 		return;
 	}
-	std::string warning = "Do you want to delete ";
-	warning += "\"";
+	zp::String warning = _T("Do you want to delete ");
+	warning += _T("\"");
 	warning += explorer.currentNode()->name;
-	warning += "\"?";
-	if (::MessageBox(NULL, warning.c_str(), "Question", MB_YESNO | MB_ICONQUESTION) != IDYES)
+	warning += _T("\"?");
+	if (::MessageBox(NULL, warning.c_str(), _T("Question"), MB_YESNO | MB_ICONQUESTION) != IDYES)
 	{
 		return;
 	}
-	explorer.remove(".");
+	explorer.remove(_T("."));
 	m_pDocument->UpdateAllViews(NULL);
 }
 
 void CLeftView::OnEditExtract()
 {
-	CFolderDialog dlg(NULL, "Select dest folder to extract.");
+	CFolderDialog dlg(NULL, _T("Select dest folder to extract."));
 	if (dlg.DoModal() != IDOK)
 	{
 		return;
 	}
-	std::string destPath = dlg.GetPathName().GetString();
+	zp::String destPath = dlg.GetPathName().GetString();
 
 	ZpExplorer& explorer = GetDocument()->GetZpExplorer();
 
 	size_t fileCount = explorer.countNodeFile(explorer.currentNode());
-	std::vector<std::pair<std::string, std::string>> params;
-	params.push_back(std::make_pair(".", destPath));
+	std::vector<std::pair<zp::String, zp::String>> params;
+	params.push_back(std::make_pair(_T("."), destPath));
 	startOperation(ProgressDialog::OP_EXTRACT, fileCount, &params);
 }
 
@@ -270,7 +270,7 @@ void CLeftView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 }
 
 void CLeftView::startOperation(ProgressDialog::Operation op, size_t fileCount,
-							const std::vector<std::pair<std::string, std::string>>* params)
+							const std::vector<std::pair<zp::String, zp::String>>* params)
 {
 	ProgressDialog progressDlg;
 	progressDlg.m_explorer = &(GetDocument()->GetZpExplorer());

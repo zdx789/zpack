@@ -67,7 +67,7 @@ void CzpEditorView::OnInitialUpdate()
 
 	CListCtrl& listCtrl = GetListCtrl();
 
-	HMODULE hShell32 = LoadLibrary("shell32.dll");
+	HMODULE hShell32 = LoadLibrary(_T("shell32.dll"));
 	if (hShell32 != NULL)
 	{
 		typedef BOOL (WINAPI * FII_PROC)(BOOL fFullInit);
@@ -88,13 +88,13 @@ void CzpEditorView::OnInitialUpdate()
 	lc.mask = LVCF_WIDTH | LVCF_FMT | LVCF_TEXT | LVCF_SUBITEM;
 	lc.cx = 200;
 	lc.fmt = LVCFMT_LEFT;
-	lc.pszText = "Filename";
+	lc.pszText = _T("Filename");
 	lc.cchTextMax = 256;
 	lc.iSubItem = 0;
 	listCtrl.InsertColumn(0, &lc);
 
 	lc.cx = 100;
-	lc.pszText = "Size";
+	lc.pszText = _T("Size");
 	lc.iSubItem = 1;
 	listCtrl.InsertColumn(1, &lc);
 }
@@ -124,22 +124,22 @@ void CzpEditorView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 	DWORD index = 0;
 	if (currentNode != explorer.rootNode())
 	{
-		listCtrl.InsertItem(index++, "..", 3);
+		listCtrl.InsertItem(index++, _T(".."), 3);
 	}
 	for (std::list<ZpNode>::const_iterator iter = currentNode->children.cbegin();
 		iter != currentNode->children.cend();
 		++iter)
 	{
 		const ZpNode& node = *iter;
-		const std::string& nodeName = node.name;
+		const zp::String& nodeName = node.name;
 		int iconIndex = 3;	//3 suppose to be folder icon
 		if (!node.isDirectory)
 		{
-			std::string fileExt;
+			zp::String fileExt;
 			size_t pos = nodeName.find_last_of('.');
-			if (pos == std::string::npos)
+			if (pos == zp::String::npos)
 			{
-				fileExt = "holycrap";	//can not be empty, or will get some icon like your c:
+				fileExt = _T("holycrap");	//can not be empty, or will get some icon like your c:
 			}
 			else
 			{
@@ -151,7 +151,7 @@ void CzpEditorView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 																sizeof(SHFILEINFO), SHGFI_USEFILEATTRIBUTES|SHGFI_SYSICONINDEX);
 			iconIndex = sfi.iIcon;
 		}
-		std::ostringstream sizeString;
+		OStringStream sizeString;
 		if (!node.isDirectory)
 		{
 			sizeString << iter->fileSize;
@@ -222,19 +222,19 @@ void CzpEditorView::OnEditDelete()
 		}
 		if (!anythingRemoved)
 		{
-			std::string warning = "Do you want to delete ";
+			zp::String warning = _T("Do you want to delete ");
 			if (pos == NULL)	//only one
 			{
-				warning += "\"";
+				warning += _T("\"");
 				warning += node->name;
-				warning += "\"";
+				warning += _T("\"");
 			}
 			else
 			{
-				warning += "seleted files/directories";
+				warning += _T("seleted files/directories");
 			}
-			warning += "?";
-			if (::MessageBox(NULL, warning.c_str(), "Question", MB_YESNO | MB_ICONQUESTION) != IDYES)
+			warning += _T("?");
+			if (::MessageBox(NULL, warning.c_str(), _T("Question"), MB_YESNO | MB_ICONQUESTION) != IDYES)
 			{
 				return;
 			}
@@ -262,7 +262,7 @@ void CzpEditorView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	else if (nChar == VK_BACK)
 	{
 		ZpExplorer& explorer = GetDocument()->GetZpExplorer();
-		explorer.enterDir("..");
+		explorer.enterDir(_T(".."));
 		m_pDocument->UpdateAllViews(NULL);
 	}
 	CListView::OnKeyDown(nChar, nRepCnt, nFlags);
@@ -270,12 +270,12 @@ void CzpEditorView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 
 void CzpEditorView::OnEditAddFolder()
 {
-	CFolderDialog folderDlg(NULL, "Select folder to add to package.");
+	CFolderDialog folderDlg(NULL, _T("Select folder to add to package."));
 	if (folderDlg.DoModal() != IDOK)
 	{
 		return;
 	}
-	std::string addToDir;
+	zp::String addToDir;
 	ZpNode* node = getSelectedNode();
 	if (node != NULL)
 	{
@@ -285,7 +285,7 @@ void CzpEditorView::OnEditAddFolder()
 	ZpExplorer& explorer = GetDocument()->GetZpExplorer();
 	size_t fileCount = explorer.countDiskFile(path.GetString());
 
-	std::vector<std::pair<std::string, std::string>> params;
+	std::vector<std::pair<zp::String, zp::String>> params;
 	params.push_back(std::make_pair(path.GetString(), addToDir));
 	startOperation(ProgressDialog::OP_ADD, fileCount, &params);
 	m_pDocument->UpdateAllViews(NULL);
@@ -298,14 +298,14 @@ void CzpEditorView::OnEditAdd()
 	{
 		return;
 	}
-	std::string addToDir;
+	zp::String addToDir;
 	ZpNode* node = getSelectedNode();
 	if (node != NULL)
 	{
 		addToDir = node->name;
 	}
 	size_t fileCount = 0;
-	std::vector<std::pair<std::string, std::string>> params;
+	std::vector<std::pair<zp::String, zp::String>> params;
 	ZpExplorer& explorer = GetDocument()->GetZpExplorer();
 	POSITION pos = dlg.GetStartPosition();
 	while (pos)
@@ -320,24 +320,24 @@ void CzpEditorView::OnEditAdd()
 
 void CzpEditorView::OnEditExtract()
 {
-	CFolderDialog dlg(NULL, "Select dest folder to extract.");
+	CFolderDialog dlg(NULL, _T("Select dest folder to extract."));
 	if (dlg.DoModal() != IDOK)
 	{
 		return;
 	}
-	std::string destPath = dlg.GetPathName().GetString();
+	zp::String destPath = dlg.GetPathName().GetString();
 
 	ZpExplorer& explorer = GetDocument()->GetZpExplorer();
 
 	size_t fileCount = 0;
-	std::vector<std::pair<std::string, std::string>> params;
+	std::vector<std::pair<zp::String, zp::String>> params;
 	CListCtrl& listCtrl = GetListCtrl();
 	POSITION pos = listCtrl.GetFirstSelectedItemPosition();
 	if (pos == NULL)
 	{
 		//nothing selected, extract current folder
 		fileCount += explorer.countNodeFile(explorer.currentNode());
-		params.push_back(std::make_pair(".", destPath));
+		params.push_back(std::make_pair(_T("."), destPath));
 	}
 	else
 	{
@@ -369,7 +369,7 @@ ZpNode* CzpEditorView::getSelectedNode()
 }
 
 void CzpEditorView::startOperation(ProgressDialog::Operation op, size_t fileCount,
-							const std::vector<std::pair<std::string, std::string>>* params)
+							const std::vector<std::pair<zp::String, zp::String>>* params)
 {
 	ProgressDialog progressDlg;
 	progressDlg.m_explorer = &(GetDocument()->GetZpExplorer());
@@ -385,7 +385,7 @@ void CzpEditorView::enterDirectory(ZpNode* node)
 	ZpExplorer& explorer = GetDocument()->GetZpExplorer();
 	if (node == NULL)
 	{
-		explorer.enterDir("..");
+		explorer.enterDir(_T(".."));
 	}
 	else if (node->isDirectory)
 	{

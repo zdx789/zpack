@@ -238,7 +238,7 @@ BOOL CMainFrame::LoadFrame(UINT nIDResource, DWORD dwDefaultStyle, CWnd* pParent
 
 void CMainFrame::OnFileNew()
 {
-	CFileDialog dlg(FALSE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, "zpack archives (*.zpk)|*.zpk|All Files (*.*)|*.*||");
+	CFileDialog dlg(FALSE, NULL, NULL, OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, _T("zpack archives (*.zpk)|*.zpk|All Files (*.*)|*.*||"));
 	if (dlg.DoModal() != IDOK)
 	{
 		return;
@@ -250,16 +250,18 @@ void CMainFrame::OnFileNew()
 	}
 	CzpEditorDoc* document = (CzpEditorDoc*)GetActiveDocument();
 	ZpExplorer& explorer = document->GetZpExplorer();
-	if (!explorer.create(filename.GetString(), ""))
+	if (!explorer.create(filename.GetString(), _T("")))
 	{
-		::MessageBox(NULL, "Create package failed.", "Error", MB_OK | MB_ICONERROR);
+		::MessageBox(NULL, _T("Create package failed."), _T("Error"), MB_OK | MB_ICONERROR);
 	}
 	document->UpdateAllViews(NULL, TRUE);
+	CString title = dlg.GetFileName() + _T(" - zpEditor");
+	this->SetWindowText(title.GetString());
 }
 
 void CMainFrame::OnFileOpen()
 {
-	CFileDialog dlg(TRUE, NULL, NULL, 0, "zpack files (*.zpk)|*.zpk|All Files (*.*)|*.*||");
+	CFileDialog dlg(TRUE, NULL, NULL, 0, _T("zpack files (*.zpk)|*.zpk|All Files (*.*)|*.*||"));
 	if (dlg.DoModal() != IDOK)
 	{
 		return;
@@ -269,9 +271,11 @@ void CMainFrame::OnFileOpen()
 	CString filename = dlg.GetPathName();
 	if (!explorer.open(filename.GetString()))
 	{
-		::MessageBox(NULL, "Invalid zpack file.", "Error", MB_OK | MB_ICONERROR);
+		::MessageBox(NULL, _T("Invalid zpack file."), _T("Error"), MB_OK | MB_ICONERROR);
 	}
 	document->UpdateAllViews(NULL, TRUE);
+	CString title = dlg.GetFileName() + _T(" - zpEditor");
+	this->SetWindowText(title.GetString());
 }
 
 void CMainFrame::OnFileDefrag()
@@ -285,12 +289,12 @@ void CMainFrame::OnFileDefrag()
 	zp::u64 fragSize = explorer.getPack()->countFragmentSize();
 	if (fragSize == 0)
 	{
-		::MessageBox(NULL, "There's not any fragment in this package.", "Information", MB_OK | MB_ICONINFORMATION);
+		::MessageBox(NULL, _T("There's not any fragment in this package."), _T("Information"), MB_OK | MB_ICONINFORMATION);
 		return;
 	}
-	std::stringstream tip;
-	tip << "You can save " << fragSize << " bytes, It will take minutes, continue?";
-	if (::MessageBox(NULL, tip.str().c_str(), "Question", MB_YESNO | MB_ICONQUESTION) != IDYES)
+	StringStream tip;
+	tip << _T("You can save ") << fragSize << _T(" bytes, It will take minutes, continue?");
+	if (::MessageBox(NULL, tip.str().c_str(), _T("Question"), MB_YESNO | MB_ICONQUESTION) != IDYES)
 	{
 		return;
 	}

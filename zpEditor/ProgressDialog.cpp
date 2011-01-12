@@ -37,13 +37,13 @@ BOOL ProgressDialog::OnInitDialog()
 	switch (m_operation)
 	{
 	case OP_ADD:
-		SetWindowText("Adding");
+		SetWindowText(_T("Adding"));
 		break;
 	case OP_EXTRACT:
-		SetWindowText("Extracting");
+		SetWindowText(_T("Extracting"));
 		break;
 	case OP_DEFRAG:
-		SetWindowText("Moving");
+		SetWindowText(_T("Moving"));
 		break;
 	}
 	
@@ -71,7 +71,7 @@ BEGIN_MESSAGE_MAP(ProgressDialog, CDialogEx)
 	ON_WM_TIMER()
 END_MESSAGE_MAP()
 
-void ProgressDialog::setProgress(const std::string& currentFilename, float progress)
+void ProgressDialog::setProgress(const zp::String& currentFilename, float progress)
 {
 	::EnterCriticalSection(&m_lock);
 	m_currentFilename = currentFilename;
@@ -84,7 +84,7 @@ void ProgressDialog::setProgress(const std::string& currentFilename, float progr
 void ProgressDialog::OnBnClickedCancel()
 {
 	m_running = false;
-	m_filename = "Canceling...";
+	m_filename = _T("Canceling...");
 	UpdateData(FALSE);
 	
 	::WaitForSingleObject(m_thread, INFINITE);
@@ -110,7 +110,7 @@ void ProgressDialog::OnTimer(UINT_PTR nIDEvent)
 	}
 }
 
-bool ZpCallback(const char* path, void* param)
+bool ZpCallback(const zp::Char* path, void* param)
 {
 	ProgressDialog* dlg = (ProgressDialog*)param;
 	if (dlg == NULL)
@@ -140,7 +140,7 @@ DWORD WINAPI ProgressDialog::threadFunc(LPVOID pointer)
 	}
 	for (size_t i = 0; i < dlg->m_params->size(); ++i)
 	{
-		const std::pair<std::string, std::string>& p = dlg->m_params->at(i);
+		const std::pair<zp::String, zp::String>& p = dlg->m_params->at(i);
 		switch (dlg->m_operation)
 		{
 		case ProgressDialog::OP_ADD:

@@ -2,6 +2,7 @@
 #include "afxcmn.h"
 #include <string>
 #include <vector>
+#include "zpack.h"
 
 class ZpExplorer;
 // ProgressDialog dialog
@@ -21,7 +22,7 @@ public:
 // Dialog Data
 	enum { IDD = IDD_DLG_PROGRESS };
 
-	void setProgress(const std::string& currentFilename, float progress);
+	void setProgress(const zp::String& currentFilename, float progress);
 
 protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV support
@@ -35,7 +36,7 @@ public:
 	bool			m_running;
 
 	CRITICAL_SECTION	m_lock;
-	std::string			m_currentFilename;
+	zp::String			m_currentFilename;
 	size_t				m_fileCount;
 	size_t				m_fileIndex;
 	int					m_progress;
@@ -50,7 +51,7 @@ public:
 		OP_DEFRAG
 	};
 	Operation	m_operation;
-	const std::vector<std::pair<std::string, std::string>>*	m_params;
+	const std::vector<std::pair<zp::String, zp::String>>*	m_params;
 
 	HANDLE	m_thread;
 

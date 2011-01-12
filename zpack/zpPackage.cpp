@@ -1,6 +1,7 @@
 #include "zpPackage.h"
 #include "zpFile.h"
 #include <cassert>
+#include <sstream>
 
 namespace zp
 {
@@ -14,7 +15,7 @@ const u32 HASH_SEED2 = 1313;
 using namespace std;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-Package::Package(const char* filename, bool readonly)
+Package::Package(const Char* filename, bool readonly)
 	: m_readonly(readonly)
 	, m_dirty(false)
 {
@@ -51,7 +52,7 @@ bool Package::valid() const
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-bool Package::hasFile(const char* filename) const
+bool Package::hasFile(const Char* filename) const
 {
 	if (m_dirty)
 	{
@@ -61,7 +62,7 @@ bool Package::hasFile(const char* filename) const
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-IFile* Package::openFile(const char* filename)
+IFile* Package::openFile(const Char* filename)
 {
 	if (m_dirty)
 	{
@@ -89,7 +90,7 @@ u32 Package::getFileCount() const
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-bool Package::getFileInfoByIndex(u32 index, char* filenameBuffer, u32 filenameBufferSize, u32* fileSize) const
+bool Package::getFileInfoByIndex(u32 index, Char* filenameBuffer, u32 filenameBufferSize, u32* fileSize) const
 {
 	if (index >= m_filenames.size())
 	{
@@ -97,7 +98,11 @@ bool Package::getFileInfoByIndex(u32 index, char* filenameBuffer, u32 filenameBu
 	}
 	if (filenameBuffer != NULL)
 	{
+	#ifdef ZP_USE_WCHAR
+		wcsncpy(filenameBuffer, m_filenames[index].c_str(), filenameBufferSize - 1);
+	#else
 		strncpy(filenameBuffer, m_filenames[index].c_str(), filenameBufferSize - 1);
+	#endif
 		filenameBuffer[filenameBufferSize - 1] = 0;
 	}
 	if (fileSize != NULL)
@@ -108,7 +113,7 @@ bool Package::getFileInfoByIndex(u32 index, char* filenameBuffer, u32 filenameBu
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-bool Package::addFile(const char* externalFilename, const char* filename, u32 flag)
+bool Package::addFile(const Char* externalFilename, const Char* filename, u32 flag)
 {
 	if (m_readonly)
 	{
@@ -154,7 +159,7 @@ bool Package::addFile(const char* externalFilename, const char* filename, u32 fl
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-bool Package::removeFile(const char* filename)
+bool Package::removeFile(const Char* filename)
 {
 	if (m_readonly)
 	{
@@ -192,7 +197,7 @@ void Package::flush()
 	//file entries
 	m_stream.seekg(m_header.fileEntryOffset, ios::beg);
 	assert(m_filenames.size() == m_fileEntries.size());
-	vector<string>::iterator nameIter = m_filenames.begin();
+	vector<String>::iterator nameIter = m_filenames.begin();
 	for (vector<FileEntry>::iterator iter = m_fileEntries.begin();
 		iter != m_fileEntries.end(); )
 	{
@@ -212,10 +217,10 @@ void Package::flush()
 	m_header.filenameSize = 0;
 	for (u32 i = 0; i < m_filenames.size(); ++i)
 	{
-		const string& filename = m_filenames[i];
-		m_stream.write(filename.c_str(), (u32)filename.length());
-		m_stream.write("\n", 1);
-		m_header.filenameSize += ((u32)filename.length() + 1);
+		const String& filename = m_filenames[i];
+		m_stream.write((char*)filename.c_str(), (u32)filename.length() * sizeof(Char));
+		m_stream.write((char*)_T("\n"), sizeof(Char));
+		m_header.filenameSize += (((u32)filename.length() + 1) * sizeof(Char));
 	}
 	m_stream.seekg(0, ios::beg);
 	m_stream.write((char*)&m_header, sizeof(m_header));
@@ -256,7 +261,7 @@ bool Package::defrag(Callback callback, void* callbackParam)
 	{
 		return false;
 	}
-	string tempFilename = m_packageName + "_";
+	String tempFilename = m_packageName + _T("_");
 	fstream tempFile;
 	tempFile.open(tempFilename.c_str(), std::ios_base::out | std::ios_base::trunc | std::ios_base::binary);
 	if (!tempFile.is_open())
@@ -279,7 +284,7 @@ bool Package::defrag(Callback callback, void* callbackParam)
 		{
 			//stop
 			tempFile.close();
-			remove(tempFilename.c_str());
+			Remove(tempFilename.c_str());
 			return false;
 		}
 		if (entry.fileSize == 0)
@@ -329,8 +334,8 @@ bool Package::defrag(Callback callback, void* callbackParam)
 	flush();	//no need to rebuild hash table here, but it's ok b/c defrag will be slow anyway
 	m_stream.close();
 
-	remove(m_packageName.c_str());
-	rename(tempFilename.c_str(), m_packageName.c_str());
+	Remove(m_packageName.c_str());
+	Rename(tempFilename.c_str(), m_packageName.c_str());
 	m_stream.open(m_packageName.c_str(), ios_base::in | ios_base::out | ios_base::binary);
 	assert(m_stream.is_open());
 	return true;
@@ -399,11 +404,22 @@ bool Package::readFilenames()
 	{
 		return true;
 	}
+	u32 charCount = m_header.filenameSize / sizeof(Char);
+	String names;
+	names.resize(charCount + 1);
+	//hack
+	Char* buffer = const_cast<Char*>(names.c_str());
+
 	m_filenames.resize(m_fileEntries.size());
 	m_stream.seekg(m_header.filenameOffset, ios::beg);
+	m_stream.read((char*)buffer, charCount * sizeof(Char));
+	names[charCount] = 0;
+	IStringStream iss(names, IStringStream::in);
 	for (u32 i = 0; i < m_fileEntries.size(); ++i)
 	{
-		getline(m_stream, m_filenames[i]);
+		Char out[260];
+		iss.getline(out, sizeof(out)/sizeof(Char));
+		m_filenames[i] = out;
 	}
 	return true;
 }
@@ -439,7 +455,7 @@ bool Package::buildHashTable()
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-int Package::getFileIndex(const char* filename) const
+int Package::getFileIndex(const Char* filename) const
 {
 	u32 hash0 = stringHash(filename, HASH_SEED0);
 	u32 hash1 = stringHash(filename, HASH_SEED1);
@@ -467,7 +483,7 @@ int Package::getFileIndex(const char* filename) const
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-void Package::insertFile(FileEntry& entry, const char* filename)
+void Package::insertFile(FileEntry& entry, const Char* filename)
 {
 	u32 maxIndex = (u32)m_fileEntries.size();
 	u64 lastEnd = m_header.headerSize;
@@ -511,7 +527,7 @@ void Package::insertFile(FileEntry& entry, const char* filename)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-u32 Package::stringHash(const char* str, u32 seed) const
+u32 Package::stringHash(const Char* str, u32 seed) const
 {
 	u32 out = 0;
 	while (*str)

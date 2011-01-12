@@ -6,7 +6,7 @@ namespace zp
 {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-IPackage* open(const char* filename, u32 flag)
+IPackage* open(const Char* filename, u32 flag)
 {
 	Package* package = new Package(filename, (flag & FLAG_READONLY) != 0);
 	if (!package->valid())
@@ -24,7 +24,7 @@ void close(IPackage* package)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-IPackage* create(const char* filename, u32 flag)
+IPackage* create(const Char* filename, u32 flag)
 {
 	std::fstream stream;
 	stream.open(filename, std::ios_base::out | std::ios_base::trunc | std::ios_base::binary);

@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#include "zpack.h"
 #include "ProgressDialog.h"
 
 struct ZpNode;
@@ -42,7 +43,7 @@ protected:
 
 	ZpNode* getSelectedNode();
 	void startOperation(ProgressDialog::Operation op, size_t fileCount,
-					const std::vector<std::pair<std::string, std::string>>* operations);
+					const std::vector<std::pair<zp::String, zp::String>>* operations);
 
 	void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);
 
