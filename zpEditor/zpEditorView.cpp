@@ -277,7 +277,7 @@ void CzpEditorView::OnEditAddFolder()
 	}
 	zp::String addToDir;
 	ZpNode* node = getSelectedNode();
-	if (node != NULL)
+	if (node != NULL && node->isDirectory)
 	{
 		addToDir = node->name;
 	}
@@ -300,7 +300,7 @@ void CzpEditorView::OnEditAdd()
 	}
 	zp::String addToDir;
 	ZpNode* node = getSelectedNode();
-	if (node != NULL)
+	if (node != NULL && node->isDirectory)
 	{
 		addToDir = node->name;
 	}

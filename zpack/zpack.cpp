@@ -2,6 +2,8 @@
 #include "zppackage.h"
 #include "zpfile.h"
 
+using namespace std;
+
 namespace zp
 {
 
@@ -26,8 +28,10 @@ void close(IPackage* package)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 IPackage* create(const Char* filename, u32 flag)
 {
-	std::fstream stream;
-	stream.open(filename, std::ios_base::out | std::ios_base::trunc | std::ios_base::binary);
+	fstream stream;
+	locale loc = locale::global(locale(""));
+	stream.open(filename, ios_base::out | ios_base::trunc | ios_base::binary);
+	locale::global(loc);
 	if (!stream.is_open())
 	{
 		return NULL;
