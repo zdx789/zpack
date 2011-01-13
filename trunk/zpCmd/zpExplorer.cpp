@@ -317,19 +317,11 @@ bool ZpExplorer::addFile(const zp::String& filename, const zp::String& relativeP
 	{
 		return false;
 	}
+	zp::u32 fileSize = 0;
 	zp::String internalName = m_workingPath + relativePath;
-	if (!m_pack->addFile(filename.c_str(), internalName.c_str()))
+	if (!m_pack->addFile(filename.c_str(), internalName.c_str(), zp::FLAG_REPLACE, &fileSize))
 	{
 		return false;
-	}
-
-	zp::u32 fileSize = 0;
-	fstream stream;
-	stream.open(filename.c_str(), ios_base::in | ios_base::binary);
-	if (stream.is_open())
-	{
-		stream.seekg(0, ios::end);
-		fileSize = static_cast<zp::u32>(stream.tellg());
 	}
 	insertFileToTree(internalName, fileSize, true);
 	return true;
@@ -345,7 +337,9 @@ bool ZpExplorer::extractFile(const zp::String& externalPath, const zp::String& i
 		return false;
 	}
 	fstream stream;
+	locale loc = locale::global(locale(""));
 	stream.open(externalPath.c_str(), ios_base::out | ios_base::trunc | ios_base::binary);
+	locale::global(loc);
 	if (!stream.is_open())
 	{
 		return false;

@@ -31,7 +31,11 @@ CFolderDialog::CFolderDialog(LPCTSTR lpszFolderName, LPCTSTR lpszTitle, DWORD dw
 {
 	// Use the supplied initial folder if non-null.
 	if (lpszFolderName == NULL)
-		m_strInitialFolderName = _T("");
+	{
+		TCHAR curDir[MAX_PATH];
+		GetCurrentDirectory(MAX_PATH, curDir);
+		m_strInitialFolderName = curDir;
+	}
 	else
 		m_strInitialFolderName = lpszFolderName;
 

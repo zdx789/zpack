@@ -16,10 +16,13 @@ using namespace std;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 Package::Package(const Char* filename, bool readonly)
-	: m_readonly(readonly)
+	: m_fileEnd(0)
+	, m_readonly(readonly)
 	, m_dirty(false)
 {
+	locale loc = locale::global(locale(""));
 	m_stream.open(filename, ios_base::in | ios_base::out | ios_base::binary);
+	locale::global(loc);
 	if (!m_stream.is_open()
 		|| !readHeader()
 		|| !readFileEntries()
@@ -113,14 +116,16 @@ bool Package::getFileInfoByIndex(u32 index, Char* filenameBuffer, u32 filenameBu
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-bool Package::addFile(const Char* externalFilename, const Char* filename, u32 flag)
+bool Package::addFile(const Char* externalFilename, const Char* filename, u32 flag, u32* fileSize)
 {
 	if (m_readonly)
 	{
 		return false;
 	}
 	fstream stream;
+	locale loc = locale::global(locale(""));
 	stream.open(externalFilename, ios_base::in | ios_base::binary);
+	locale::global(loc);
 	if (!stream.is_open())
 	{
 		return false;
@@ -151,10 +156,12 @@ bool Package::addFile(const Char* externalFilename, const Char* filename, u32 fl
 	m_stream.seekg(entry.byteOffset, ios::beg);
 	m_stream.write((char*)content, entry.fileSize);
 	delete[] content;
-
-	++m_header.fileCount;
-	m_header.filenameOffset = m_header.fileEntryOffset + sizeof(FileEntry) * m_header.fileCount;
+	
 	m_dirty = true;
+	if (fileSize != NULL)
+	{
+		*fileSize = entry.fileSize;
+	}
 	return true;
 }
 
@@ -170,13 +177,8 @@ bool Package::removeFile(const Char* filename)
 	{
 		return false;
 	}
-	//hash table doesn't change until flush£¬so we don't remove entry here
+	//hash table doesn't change until flush£¬so we shouldn't remove entry here
 	m_fileEntries[fileIndex].flag |= FILE_FLAG_DELETED;
-	//assert(m_filenames.size() == m_fileEntries.size());
-	//m_fileEntries.erase(m_fileEntries.begin() + fileIndex);
-	//m_filenames.erase(m_filenames.begin() + fileIndex);
-	--m_header.fileCount;
-	m_header.filenameOffset = m_header.fileEntryOffset + sizeof(FileEntry) * m_header.fileCount;
 	m_dirty = true;
 	return true;
 }
@@ -195,7 +197,6 @@ void Package::flush()
 		return;
 	}
 	//file entries
-	m_stream.seekg(m_header.fileEntryOffset, ios::beg);
 	assert(m_filenames.size() == m_fileEntries.size());
 	vector<String>::iterator nameIter = m_filenames.begin();
 	for (vector<FileEntry>::iterator iter = m_fileEntries.begin();
@@ -208,12 +209,27 @@ void Package::flush()
 			nameIter = m_filenames.erase(nameIter);
 			continue;
 		}
-		m_stream.write((char*)&entry, sizeof(FileEntry));
 		++iter;
 		++nameIter;
 	}
+	m_header.fileCount = (u32)m_fileEntries.size();
+	if (m_fileEntries.empty())
+	{
+		 m_header.fileEntryOffset = sizeof(m_header);
+	}
+	else
+	{
+		FileEntry& last =  m_fileEntries.back();
+		m_header.fileEntryOffset = last.byteOffset + last.fileSize;
+	}
+	m_stream.seekg(m_header.fileEntryOffset, ios::beg);
+	for (u32 i = 0; i < m_fileEntries.size(); ++i)
+	{
+		FileEntry& entry = m_fileEntries[i];
+		m_stream.write((char*)&entry, sizeof(FileEntry));
+	}
+	m_header.filenameOffset = m_header.fileEntryOffset + m_header.fileCount * sizeof(FileEntry);
 	//filenames
-	assert(m_filenames.size() == m_fileEntries.size());
 	m_header.filenameSize = 0;
 	for (u32 i = 0; i < m_filenames.size(); ++i)
 	{
@@ -222,6 +238,7 @@ void Package::flush()
 		m_stream.write((char*)_T("\n"), sizeof(Char));
 		m_header.filenameSize += (((u32)filename.length() + 1) * sizeof(Char));
 	}
+	m_fileEnd = m_header.filenameOffset + m_header.filenameSize;
 	m_stream.seekg(0, ios::beg);
 	m_stream.write((char*)&m_header, sizeof(m_header));
 	m_stream.flush();
@@ -237,15 +254,10 @@ u64 Package::countFragmentSize()
 		return 0;
 	}
 	u64 totalSize = m_header.headerSize + m_header.fileCount * m_header.fileEntrySize + m_header.filenameSize;
-	bool moving = false;
 	u64 nextPos = m_header.headerSize;
 	for (u32 i = 0; i < m_fileEntries.size(); ++i)
 	{
 		const FileEntry& entry = m_fileEntries[i];
-		if (!moving && entry.byteOffset != nextPos)
-		{
-			moving = true;
-		}
 		nextPos += entry.fileSize;
 		totalSize += entry.fileSize;
 	}
@@ -263,7 +275,9 @@ bool Package::defrag(Callback callback, void* callbackParam)
 	}
 	String tempFilename = m_packageName + _T("_");
 	fstream tempFile;
+	locale loc = locale::global(locale(""));
 	tempFile.open(tempFilename.c_str(), std::ios_base::out | std::ios_base::trunc | std::ios_base::binary);
+	locale::global(loc);
 	if (!tempFile.is_open())
 	{
 		return false;
@@ -322,13 +336,13 @@ bool Package::defrag(Callback callback, void* callbackParam)
 		m_stream.read(&tempBuffer[0], currentChunkSize);
 		tempFile.write(&tempBuffer[0], currentChunkSize);
 	}
-	m_header.fileEntryOffset = nextPos;
-	m_header.filenameOffset = m_header.fileEntryOffset + sizeof(FileEntry) * m_header.fileCount;
 
 	m_stream.close();
 	tempFile.close();
 
+	loc = locale::global(locale(""));
 	m_stream.open(tempFilename.c_str(), ios_base::in | ios_base::out | ios_base::binary);	//only for flush()
+	locale::global(loc);
 	assert(m_stream.is_open());
 	m_dirty = true;
 	flush();	//no need to rebuild hash table here, but it's ok b/c defrag will be slow anyway
@@ -336,7 +350,9 @@ bool Package::defrag(Callback callback, void* callbackParam)
 
 	Remove(m_packageName.c_str());
 	Rename(tempFilename.c_str(), m_packageName.c_str());
+	loc = locale::global(locale(""));
 	m_stream.open(m_packageName.c_str(), ios_base::in | ios_base::out | ios_base::binary);
+	locale::global(loc);
 	assert(m_stream.is_open());
 	return true;
 }
@@ -345,8 +361,8 @@ bool Package::defrag(Callback callback, void* callbackParam)
 bool Package::readHeader()
 {
 	m_stream.seekg(0, ios::end);
-	u64 packageSize = m_stream.tellg();
-	if (packageSize < sizeof(PackageHeader))
+	m_fileEnd = m_stream.tellg();
+	if (m_fileEnd < sizeof(PackageHeader))
 	{
 		return false;
 	}
@@ -356,8 +372,8 @@ bool Package::readHeader()
 		|| m_header.headerSize < sizeof(PackageHeader)
 		|| m_header.fileEntrySize < sizeof(FileEntry)
 		|| m_header.fileEntryOffset < m_header.headerSize
-		|| m_header.fileCount * m_header.fileEntrySize + m_header.fileEntryOffset > packageSize
-		|| m_header.filenameOffset + m_header.filenameSize > packageSize)
+		|| m_header.fileCount * m_header.fileEntrySize + m_header.fileEntryOffset > m_fileEnd
+		|| m_header.filenameOffset + m_header.filenameSize > m_fileEnd)
 	{
 		return false;
 	}
@@ -493,11 +509,9 @@ void Package::insertFile(FileEntry& entry, const Char* filename)
 		for (u32 fileIndex = 0; fileIndex < maxIndex; ++fileIndex)
 		{
 			FileEntry& thisEntry = m_fileEntries[fileIndex];
-			if ((thisEntry.flag & FILE_FLAG_DELETED) != 0)
-			{
-				continue;
-			}
-			if (thisEntry.byteOffset - lastEnd >= entry.fileSize)
+			if (thisEntry.byteOffset >= lastEnd + entry.fileSize
+				&& (lastEnd + entry.fileSize <= m_header.fileEntryOffset
+				|| lastEnd >= m_header.filenameOffset + m_header.filenameSize))	//don't overwrite old file entries and filenames
 			{
 				entry.byteOffset = lastEnd;
 				m_fileEntries.insert(m_fileEntries.begin() + fileIndex, entry);
@@ -510,19 +524,22 @@ void Package::insertFile(FileEntry& entry, const Char* filename)
 			lastEnd = thisEntry.byteOffset + thisEntry.fileSize;
 		}
 	}
-	if (m_fileEntries.empty())
+	else
 	{
-		entry.byteOffset = sizeof(PackageHeader);
+		lastEnd = m_fileEnd;
+	}
+	if (m_header.fileEntryOffset > lastEnd + entry.fileSize)
+	{
+		entry.byteOffset = lastEnd;
 	}
 	else
 	{
-		FileEntry& last = m_fileEntries.back();
-		entry.byteOffset = last.byteOffset + last.fileSize;
+		entry.byteOffset = m_fileEnd;
+		m_fileEnd += entry.fileSize;
 	}
 	m_fileEntries.push_back(entry);
 	m_filenames.push_back(filename);
 	assert(m_filenames.size() == m_fileEntries.size());
-	m_header.fileEntryOffset = entry.byteOffset + entry.fileSize;
 	return;
 }
 
