@@ -83,6 +83,10 @@ void CzpEditorView::OnInitialUpdate()
 
 	listCtrl.ModifyStyle(0, LVS_REPORT);
 	listCtrl.SetExtendedStyle(LVS_EX_FULLROWSELECT);
+	
+	//can it be any more stupid?
+	listCtrl.DeleteColumn(0);
+	listCtrl.DeleteColumn(0);
 
 	LVCOLUMN lc;
 	lc.mask = LVCF_WIDTH | LVCF_FMT | LVCF_TEXT | LVCF_SUBITEM;
