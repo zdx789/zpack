@@ -46,7 +46,7 @@ protected:
 	void startOperation(ProgressDialog::Operation op, size_t fileCount,
 					const std::vector<std::pair<zp::String, zp::String>>* operations);
 
-	void enterDirectory(ZpNode* node);
+	void openNode(ZpNode* node);
 
 protected:
 	afx_msg void OnStyleChanged(int nStyleType, LPSTYLESTRUCT lpStyleStruct);
@@ -61,6 +61,7 @@ public:
 	afx_msg void OnEditAdd();
 	afx_msg void OnEditExtract();
 	afx_msg void OnUpdateMenu(CCmdUI* pCmdUI);
+	afx_msg void OnEditOpen();
 };
 
 #ifndef _DEBUG  // debug version in zpEditorView.cpp

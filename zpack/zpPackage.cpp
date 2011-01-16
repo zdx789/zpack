@@ -77,7 +77,7 @@ IFile* Package::openFile(const Char* filename)
 		return NULL;
 	}
 	FileEntry& entry = m_fileEntries[fileIndex];
-	return new File(m_stream, entry.byteOffset, entry.fileSize);
+	return new File(m_stream, entry.byteOffset, entry.fileSize, entry.flag);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -93,7 +93,7 @@ u32 Package::getFileCount() const
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-bool Package::getFileInfoByIndex(u32 index, Char* filenameBuffer, u32 filenameBufferSize, u32* fileSize) const
+bool Package::getFileInfo(u32 index, Char* filenameBuffer, u32 filenameBufferSize, u32* fileSize) const
 {
 	if (index >= m_filenames.size())
 	{
@@ -130,14 +130,15 @@ bool Package::addFile(const Char* externalFilename, const Char* filename, u32 fl
 	{
 		return false;
 	}
-	if (getFileIndex(filename) >= 0)
+	int fileIndex = getFileIndex(filename);
+	if (fileIndex >= 0)
 	{
 		//file exist
 		if ((flag & FLAG_REPLACE) == 0)
 		{
 			return false;
 		}
-		removeFile(filename);
+		m_fileEntries[fileIndex].flag |= FILE_FLAG_DELETED;
 	}
 	FileEntry entry;
 	entry.flag = 0;
@@ -247,7 +248,7 @@ void Package::flush()
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-u64 Package::countFragmentSize()
+u64 Package::countFragmentSize() const
 {
 	if (m_dirty)
 	{

@@ -52,7 +52,7 @@ bool ZpExplorer::open(const zp::String& path)
 	{
 		zp::Char buffer[256];
 		zp::u32 fileSize;
-		m_pack->getFileInfoByIndex(i, buffer, sizeof(buffer)/sizeof(zp::Char), &fileSize);
+		m_pack->getFileInfo(i, buffer, sizeof(buffer)/sizeof(zp::Char), &fileSize);
 		zp::String filename = buffer;
 		insertFileToTree(filename, fileSize, false);
 	}

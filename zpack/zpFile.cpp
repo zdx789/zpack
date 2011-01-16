@@ -6,9 +6,10 @@ namespace zp
 File* File::s_lastSeek = NULL;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-File::File(std::fstream& stream, u64 offset, u32 size)
+File::File(std::fstream& stream, u64 offset, u32 size, u32 flag)
 	: m_stream(stream)
 	, m_offset(offset)
+	, m_flag(flag)
 	, m_size(size)
 	, m_readPos(0)
 {
