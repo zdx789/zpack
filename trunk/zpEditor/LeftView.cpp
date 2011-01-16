@@ -54,7 +54,7 @@ void CLeftView::OnInitialUpdate()
 	CTreeView::OnInitialUpdate();
 
 	CTreeCtrl& treeCtrl = GetTreeCtrl();
-	treeCtrl.ModifyStyle(0, TVS_HASBUTTONS | TVS_HASLINES);
+	treeCtrl.ModifyStyle(0, TVS_HASBUTTONS | TVS_HASLINES | TVS_SHOWSELALWAYS);
 	treeCtrl.SetImageList(&m_imageList, TVSIL_NORMAL);
 }
 

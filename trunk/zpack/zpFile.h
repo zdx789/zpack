@@ -10,7 +10,7 @@ namespace zp
 class File : public IFile
 {
 public:
-	File(std::fstream& stream, u64 offset, u32 size);
+	File(std::fstream& stream, u64 offset, u32 size, u32 flag);
 
 	virtual u32 size();
 	virtual void seek(u32 pos);
@@ -19,6 +19,7 @@ public:
 private:
 	std::fstream&	m_stream;
 	u64				m_offset;
+	u32				m_flag;
 	u32				m_size;
 	u32				m_readPos;
 	static File*	s_lastSeek;

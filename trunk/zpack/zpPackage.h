@@ -64,14 +64,14 @@ public:
 	virtual void closeFile(IFile* file);
 
 	virtual u32 getFileCount() const;
-	virtual bool getFileInfoByIndex(u32 index, Char* filenameBuffer, u32 filenameBufferSize, u32* fileSize = NULL) const;
+	virtual bool getFileInfo(u32 index, Char* filenameBuffer, u32 filenameBufferSize, u32* fileSize = NULL) const;
 
 	virtual bool addFile(const Char* externalFilename, const Char* filename, u32 flag = FLAG_REPLACE, u32* fileSize = NULL);
 	virtual bool removeFile(const Char* filename);
 	virtual bool dirty() const;
 	virtual void flush();
 
-	virtual u64 countFragmentSize();
+	virtual u64 countFragmentSize() const;
 	virtual bool defrag(Callback callback, void* callbackParam);
 
 private:
@@ -82,14 +82,14 @@ private:
 	bool buildHashTable();
 	int getFileIndex(const Char* filename) const;
 	void insertFile(FileEntry& entry, const Char* filename);
-	
+
 	u32 stringHash(const Char* str, u32 seed) const;
 
 	void fixHashTable(u32 index);
 
 private:
 	String					m_packageName;
-	std::fstream			m_stream;
+	mutable std::fstream	m_stream;
 	PackageHeader			m_header;
 	std::vector<int>		m_hashTable;
 	std::vector<FileEntry>	m_fileEntries;

@@ -34,11 +34,13 @@ BEGIN_MESSAGE_MAP(CzpEditorView, CListView)
 	ON_COMMAND(ID_EDIT_ADD, &CzpEditorView::OnEditAdd)
 	ON_COMMAND(ID_EDIT_DELETE, &CzpEditorView::OnEditDelete)
 	ON_COMMAND(ID_EDIT_EXTRACT, &CzpEditorView::OnEditExtract)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_OPEN, &CzpEditorView::OnUpdateMenu)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_ADD, &CzpEditorView::OnUpdateMenu)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_ADD_FOLDER, &CzpEditorView::OnUpdateMenu)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_DELETE, &CzpEditorView::OnUpdateMenu)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_EXTRACT, &CzpEditorView::OnUpdateMenu)
 	ON_UPDATE_COMMAND_UI(ID_FILE_DEFRAG, &CzpEditorView::OnUpdateMenu)
+	ON_COMMAND(ID_EDIT_OPEN, &CzpEditorView::OnEditOpen)
 END_MESSAGE_MAP()
 
 // CzpEditorView construction/destruction
@@ -81,7 +83,7 @@ void CzpEditorView::OnInitialUpdate()
 	::Shell_GetImageLists(NULL, &imageList);
 	listCtrl.SetImageList(CImageList::FromHandle(imageList), LVSIL_SMALL);
 
-	listCtrl.ModifyStyle(0, LVS_REPORT);
+	listCtrl.ModifyStyle(0, LVS_REPORT | LVS_SHOWSELALWAYS );
 	listCtrl.SetExtendedStyle(LVS_EX_FULLROWSELECT);
 	
 	//can it be any more stupid?
@@ -179,7 +181,7 @@ void CzpEditorView::OnDbClick(NMHDR *pNMHDR, LRESULT *pResult)
 		return;
 	}
 	ZpNode* node = (ZpNode*)listCtrl.GetItemData(selected);
-	enterDirectory(node);
+	openNode(node);
 }
 
 // CzpEditorView diagnostics
@@ -260,8 +262,7 @@ void CzpEditorView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	}
 	else if (nChar == VK_RETURN)
 	{
-		ZpNode* node = getSelectedNode();
-		enterDirectory(node);
+		OnEditOpen();
 	}
 	else if (nChar == VK_BACK)
 	{
@@ -384,7 +385,7 @@ void CzpEditorView::startOperation(ProgressDialog::Operation op, size_t fileCoun
 	progressDlg.DoModal();
 }
 
-void CzpEditorView::enterDirectory(ZpNode* node)
+void CzpEditorView::openNode(ZpNode* node)
 {
 	ZpExplorer& explorer = GetDocument()->GetZpExplorer();
 	if (node == NULL)
@@ -397,6 +398,12 @@ void CzpEditorView::enterDirectory(ZpNode* node)
 	}
 	else
 	{
+		TCHAR tempPath[MAX_PATH];
+		::GetTempPath(sizeof(tempPath) / sizeof(TCHAR), tempPath);
+		explorer.extract(node->name.c_str(), tempPath);
+		zp::String tempFilename = tempPath;
+		tempFilename += node->name;
+		::ShellExecute(NULL, _T("open"), tempFilename.c_str(), NULL, NULL, SW_SHOW);
 		return;
 	}
 	m_pDocument->UpdateAllViews(NULL);
@@ -411,7 +418,7 @@ void CzpEditorView::OnUpdateMenu(CCmdUI* pCmdUI)
 	else
 	{
 		ZpExplorer& explorer = GetDocument()->GetZpExplorer();
-		if (pCmdUI->m_nID == ID_EDIT_DELETE)
+		if (pCmdUI->m_nID == ID_EDIT_OPEN || pCmdUI->m_nID == ID_EDIT_DELETE)
 		{
 			pCmdUI->Enable(explorer.isOpen() && getSelectedNode() != NULL);
 		}
@@ -420,4 +427,15 @@ void CzpEditorView::OnUpdateMenu(CCmdUI* pCmdUI)
 			pCmdUI->Enable(explorer.isOpen());
 		}
 	}
+}
+
+void CzpEditorView::OnEditOpen()
+{
+	CListCtrl& listCtrl = GetListCtrl();
+	if (listCtrl.GetSelectedCount() > 1)
+	{
+		return;
+	}
+	ZpNode* node = getSelectedNode();
+	openNode(node);
 }
