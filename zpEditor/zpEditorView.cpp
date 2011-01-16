@@ -401,9 +401,7 @@ void CzpEditorView::openNode(ZpNode* node)
 		TCHAR tempPath[MAX_PATH];
 		::GetTempPath(sizeof(tempPath) / sizeof(TCHAR), tempPath);
 		explorer.extract(node->name.c_str(), tempPath);
-		zp::String tempFilename = tempPath;
-		tempFilename += node->name;
-		::ShellExecute(NULL, _T("open"), tempFilename.c_str(), NULL, NULL, SW_SHOW);
+		::ShellExecute(NULL, _T("open"), node->name.c_str(), NULL, tempPath, SW_SHOW);
 		return;
 	}
 	m_pDocument->UpdateAllViews(NULL);
