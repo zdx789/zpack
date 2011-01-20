@@ -9,6 +9,8 @@
 
 // ProgressDialog dialog
 
+const int PROGRESS_STEP = 1000;
+
 IMPLEMENT_DYNAMIC(ProgressDialog, CDialogEx)
 
 ProgressDialog::ProgressDialog(CWnd* pParent /*=NULL*/)
@@ -32,7 +34,7 @@ BOOL ProgressDialog::OnInitDialog()
 {
 	CDialogEx::OnInitDialog();
 
-	m_progressCtrl.SetRange(0, 100);
+	m_progressCtrl.SetRange(0, PROGRESS_STEP);
 	SetTimer(0, 50, NULL);
 	switch (m_operation)
 	{
@@ -75,7 +77,7 @@ void ProgressDialog::setProgress(const zp::String& currentFilename, float progre
 {
 	::EnterCriticalSection(&m_lock);
 	m_currentFilename = currentFilename;
-	m_progress = int(progress * 100);
+	m_progress = int(progress * PROGRESS_STEP);
 	::LeaveCriticalSection(&m_lock);
 }
 

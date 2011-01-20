@@ -180,6 +180,7 @@ bool ZpExplorer::add(const zp::String& srcPath, const zp::String& dstPath)
 		zp::String nakedFilename = srcPath.substr(pos + 1, srcPath.length() - pos - 1);
 		bool ret = addFile(srcPath, nakedFilename);
 		m_pack->flush();
+		::FindClose(findFile);
 		return ret;
 	}
 	//it's a directory
@@ -195,6 +196,7 @@ bool ZpExplorer::add(const zp::String& srcPath, const zp::String& dstPath)
 	}
 	enumFile(searchDirectory, addPackFile, this);
 	m_pack->flush();
+	::FindClose(findFile);
 	return true;
 }
 
