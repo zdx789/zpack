@@ -475,14 +475,25 @@ bool Package::buildHashTable()
 int Package::getFileIndex(const Char* filename) const
 {
 	u32 hash0 = stringHash(filename, HASH_SEED0);
+#if (ZP_HASH_NUM > 1)
 	u32 hash1 = stringHash(filename, HASH_SEED1);
+#endif
+#if (ZP_HASH_NUM > 2)
 	u32 hash2 = stringHash(filename, HASH_SEED2);
+#endif
 	u32 hashIndex = hash0 % m_hashTable.size();
 	int fileIndex = m_hashTable[hashIndex];
 	while (fileIndex >= 0)
 	{
 		const FileEntry& entry = m_fileEntries[fileIndex];
-		if (entry.hash0 == hash0 && entry.hash1 == hash1 && entry.hash2 == hash2)
+		if (entry.hash0 == hash0
+#if (ZP_HASH_NUM > 1)
+			&& entry.hash1 == hash1
+#endif
+#if (ZP_HASH_NUM > 2)
+			&& entry.hash2 == hash2
+#endif
+			)
 		{
 			if ((entry.flag & FILE_FLAG_DELETED) != 0)
 			{

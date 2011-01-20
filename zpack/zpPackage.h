@@ -24,6 +24,8 @@ const u32 CURRENT_VERSION = '0010';
 
 const u32 FILE_FLAG_DELETED = 1;
 
+#define ZP_HASH_NUM		3	//can be 1, 2 or 3. the less the faster	
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 struct PackageHeader
 {

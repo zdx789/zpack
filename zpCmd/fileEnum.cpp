@@ -48,6 +48,7 @@ bool enumFile(const zp::String& searchPath, EnumCallback callback, void* param)
 			return true;
 		}
 	}
+	::FindClose(findFile);
 	return true;
 }
 
