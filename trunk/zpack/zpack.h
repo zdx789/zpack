@@ -7,6 +7,12 @@
 	#define ZP_USE_WCHAR
 #endif
 
+#if defined (_MSC_VER)
+	#define ZP_CASE_SENSITIVE	0
+#else
+	#define ZP_CASE_SENSITIVE	1
+#endif
+
 namespace zp
 {
 #if defined (ZP_USE_WCHAR)
@@ -23,13 +29,13 @@ namespace zp
 	typedef std::string String;
 #endif
 
-#define ZP_CASE_SENSITIVE	0
 
 typedef unsigned long u32;
 typedef unsigned __int64 u64;
 
 const u32 FLAG_READONLY = 1;
-const u32 FLAG_REPLACE = 2;
+const u32 FLAG_NO_FILENAME = 2;
+const u32 FLAG_REPLACE = 4;
 
 typedef bool (*Callback)(const Char* path, void* param);
 
@@ -39,6 +45,8 @@ class IFile;
 class IPackage
 {
 public:
+	virtual bool readonly() const = 0;
+
 	//readonly functions, not available when package is dirty
 	virtual bool hasFile(const Char* filename) const = 0;
 	virtual IFile* openFile(const Char* filename) = 0;
@@ -73,8 +81,8 @@ protected:
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-IPackage* create(const Char* filename, u32 flag = 0);
-IPackage* open(const Char* filename, u32 flag = FLAG_READONLY);
+IPackage* create(const Char* filename);
+IPackage* open(const Char* filename, u32 flag = FLAG_READONLY | FLAG_NO_FILENAME);
 void close(IPackage* package);
 
 }

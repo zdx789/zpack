@@ -40,7 +40,7 @@ public:
 
 	void setCallback(zp::Callback callback, void* param);
 
-	bool open(const zp::String& path);
+	bool open(const zp::String& path, bool readonly = false);
 	bool create(const zp::String& path, const zp::String& inputPath);
 	void close();
 	bool isOpen() const;

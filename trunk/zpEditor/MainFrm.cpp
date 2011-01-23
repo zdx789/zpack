@@ -10,7 +10,6 @@
 #include "zpEditorView.h"
 #include "zpEditorDoc.h"
 #include "ProgressDialog.h"
-#include "zpack.h"
 #include <sstream>
 
 #ifdef _DEBUG
@@ -269,13 +268,22 @@ void CMainFrame::OnFileOpen()
 	CzpEditorDoc* document = (CzpEditorDoc*)GetActiveDocument();
 	ZpExplorer& explorer = document->GetZpExplorer();
 	CString filename = dlg.GetPathName();
-	if (!explorer.open(filename.GetString()))
+	if (!explorer.open(filename.GetString(), false)
+		&& !explorer.open(filename.GetString(), true))
 	{
 		::MessageBox(NULL, _T("Invalid zpack file."), _T("Error"), MB_OK | MB_ICONERROR);
 	}
-	document->UpdateAllViews(NULL, TRUE);
-	CString title = dlg.GetFileName() + _T(" - zpEditor");
+	CString title;
+	if (explorer.getPack()->readonly())
+	{
+		title = dlg.GetFileName() + _T(" (Read Only) - zpEditor");
+	}
+	else
+	{
+		title = dlg.GetFileName() + _T(" - zpEditor");
+	}
 	this->SetWindowText(title.GetString());
+	document->UpdateAllViews(NULL, TRUE);
 }
 
 void CMainFrame::OnFileDefrag()
@@ -314,10 +322,22 @@ void CMainFrame::OnUpdateMenu(CCmdUI* pCmdUI)
 	if (document == NULL)
 	{
 		pCmdUI->Enable(FALSE);
+		return;
 	}
-	else
+	ZpExplorer& explorer = document->GetZpExplorer();
+	if (!explorer.isOpen())
 	{
-		ZpExplorer& explorer = document->GetZpExplorer();
-		pCmdUI->Enable(explorer.isOpen());
+		pCmdUI->Enable(FALSE);
+		return;
 	}
+	if (explorer.getPack()->readonly()
+		&& (pCmdUI->m_nID == ID_FILE_DEFRAG
+			|| pCmdUI->m_nID == ID_EDIT_ADD
+			|| pCmdUI->m_nID == ID_EDIT_ADD_FOLDER
+			|| pCmdUI->m_nID == ID_EDIT_DELETE))
+	{
+		pCmdUI->Enable(FALSE);
+		return;
+	}
+	pCmdUI->Enable(TRUE);
 }

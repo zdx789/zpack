@@ -56,10 +56,12 @@ struct FileEntry
 class Package : public IPackage
 {
 public:
-	Package(const Char* filename, bool readonly);
+	Package(const Char* filename, bool readonly, bool readFilename);
 	~Package();
 
 	bool valid() const;
+
+	virtual bool readonly() const;
 
 	virtual bool hasFile(const Char* filename) const;
 	virtual IFile* openFile(const Char* filename);
@@ -97,7 +99,9 @@ private:
 	std::vector<FileEntry>	m_fileEntries;
 	std::vector<String>		m_filenames;
 	u64						m_fileEnd;
+	u32						m_hashMask;
 	bool					m_readonly;
+	bool					m_readFilename;
 	bool					m_dirty;
 };
 

@@ -2,12 +2,14 @@
 #include "zpFile.h"
 #include <cassert>
 #include <sstream>
+//#include "PerfUtil.h"
 
 namespace zp
 {
 
-const u32 MIN_HASH_TABLE_SIZE = 256;
-const u32 MAX_HASH_TABLE_SIZE = 0x80000;
+const u32 MIN_HASH_BITS = 8;
+const u32 MIN_HASH_TABLE_SIZE = (1<<MIN_HASH_BITS);
+const u32 MAX_HASH_TABLE_SIZE = 0x100000;
 const u32 HASH_SEED0 = 31;	//not a good idea to change these numbers, must be identical between reading and writing code
 const u32 HASH_SEED1 = 131;
 const u32 HASH_SEED2 = 1313;
@@ -15,11 +17,17 @@ const u32 HASH_SEED2 = 1313;
 using namespace std;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-Package::Package(const Char* filename, bool readonly)
+Package::Package(const Char* filename, bool readonly, bool readFilename)
 	: m_fileEnd(0)
+	, m_hashMask(0)
 	, m_readonly(readonly)
+	, m_readFilename(readFilename)
 	, m_dirty(false)
 {
+	if (!readFilename && !readonly)
+	{	//require filename to modify package
+		return;
+	}
 	locale loc = locale::global(locale(""));
 	m_stream.open(filename, ios_base::in | ios_base::out | ios_base::binary);
 	locale::global(loc);
@@ -52,6 +60,12 @@ Package::~Package()
 bool Package::valid() const
 {
 	return m_stream.is_open();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+bool Package::readonly() const
+{
+	return m_readonly;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -378,9 +392,9 @@ bool Package::readHeader()
 	{
 		return false;
 	}
-	if (m_header.version != CURRENT_VERSION)
+	if (m_header.version != CURRENT_VERSION && !m_readonly)
 	{
-		m_readonly = true;
+		return false;
 	}
 	return true;
 }
@@ -388,6 +402,7 @@ bool Package::readHeader()
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool Package::readFileEntries()
 {
+	//BEGIN_PERF("read entry")
 	m_fileEntries.resize(m_header.fileCount);
 	m_stream.seekg(m_header.fileEntryOffset, ios::beg);
 	u32 extraDataSize = m_header.fileEntrySize - sizeof(FileEntry);
@@ -411,13 +426,15 @@ bool Package::readFileEntries()
 			m_stream.seekg(extraDataSize, ios::cur);
 		}
 	}
+	//END_PERF
 	return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool Package::readFilenames()
 {
-	if (m_fileEntries.empty() || m_readonly)
+	//BEGIN_PERF("read filename")
+	if (m_fileEntries.empty() || !m_readFilename)
 	{
 		return true;
 	}
@@ -438,13 +455,16 @@ bool Package::readFilenames()
 		iss.getline(out, sizeof(out)/sizeof(Char));
 		m_filenames[i] = out;
 	}
+	//END_PERF
 	return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool Package::buildHashTable()
 {
+	//BEGIN_PERF("buid hash")
 	u32 tableSize = MIN_HASH_TABLE_SIZE / 2;
+	u32 hashBits = MIN_HASH_BITS - 1;
 	while (tableSize < m_header.fileCount)
 	{
 		if (tableSize >= MAX_HASH_TABLE_SIZE)
@@ -452,13 +472,17 @@ bool Package::buildHashTable()
 			return false;
 		}
 		tableSize *= 2;
+		++hashBits;
 	}
 	tableSize *= 2;
+	++hashBits;
+	m_hashMask = (1 << hashBits) - 1;
+
 	m_hashTable.clear();
 	m_hashTable.resize(tableSize, -1);
 	for (u32 i = 0; i < m_header.fileCount; ++i)
 	{
-		u32 index = m_fileEntries[i].hash0 % tableSize;
+		u32 index = (m_fileEntries[i].hash0 & m_hashMask);
 		while (m_hashTable[index] != -1)
 		{
 			if (++index >= tableSize)
@@ -468,6 +492,7 @@ bool Package::buildHashTable()
 		}
 		m_hashTable[index] = i;
 	}
+	//END_PERF
 	return true;
 }
 
@@ -481,7 +506,7 @@ int Package::getFileIndex(const Char* filename) const
 #if (ZP_HASH_NUM > 2)
 	u32 hash2 = stringHash(filename, HASH_SEED2);
 #endif
-	u32 hashIndex = hash0 % m_hashTable.size();
+	u32 hashIndex = (hash0 & m_hashMask);
 	int fileIndex = m_hashTable[hashIndex];
 	while (fileIndex >= 0)
 	{

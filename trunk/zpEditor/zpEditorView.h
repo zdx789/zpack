@@ -5,7 +5,6 @@
 #pragma once
 
 #include "ProgressDialog.h"
-#include "zpack.h"
 
 struct ZpNode;
 
