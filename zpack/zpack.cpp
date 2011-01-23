@@ -10,7 +10,9 @@ namespace zp
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 IPackage* open(const Char* filename, u32 flag)
 {
-	Package* package = new Package(filename, (flag & FLAG_READONLY) != 0);
+	Package* package = new Package(filename, 
+									(flag & FLAG_READONLY) != 0,
+									(flag & FLAG_NO_FILENAME) == 0);
 	if (!package->valid())
 	{
 		delete package;
@@ -26,7 +28,7 @@ void close(IPackage* package)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-IPackage* create(const Char* filename, u32 flag)
+IPackage* create(const Char* filename)
 {
 	fstream stream;
 	locale loc = locale::global(locale(""));
@@ -45,7 +47,7 @@ IPackage* create(const Char* filename, u32 flag)
 	header.fileEntryOffset = sizeof(PackageHeader);
 	header.filenameOffset = sizeof(PackageHeader);
 	header.filenameSize = 0;
-	header.flag = flag;
+	header.flag = 0;
 	header.reserved = 0;
 
 	stream.write((char*)&header, sizeof(header));

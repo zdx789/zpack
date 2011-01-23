@@ -412,19 +412,29 @@ void CzpEditorView::OnUpdateMenu(CCmdUI* pCmdUI)
 	if (m_pDocument == NULL)
 	{
 		pCmdUI->Enable(FALSE);
+		return;
 	}
-	else
+	ZpExplorer& explorer = GetDocument()->GetZpExplorer();
+	if (!explorer.isOpen())
 	{
-		ZpExplorer& explorer = GetDocument()->GetZpExplorer();
-		if (pCmdUI->m_nID == ID_EDIT_OPEN || pCmdUI->m_nID == ID_EDIT_DELETE)
-		{
-			pCmdUI->Enable(explorer.isOpen() && getSelectedNode() != NULL);
-		}
-		else
-		{
-			pCmdUI->Enable(explorer.isOpen());
-		}
+		pCmdUI->Enable(FALSE);
+		return;
 	}
+	if (explorer.getPack()->readonly()
+		&& (pCmdUI->m_nID == ID_FILE_DEFRAG
+			|| pCmdUI->m_nID == ID_EDIT_ADD
+			|| pCmdUI->m_nID == ID_EDIT_ADD_FOLDER
+			|| pCmdUI->m_nID == ID_EDIT_DELETE))
+	{
+		pCmdUI->Enable(FALSE);
+		return;
+	}
+	if (pCmdUI->m_nID == ID_EDIT_OPEN || pCmdUI->m_nID == ID_EDIT_DELETE)
+	{
+		pCmdUI->Enable(getSelectedNode() != NULL);
+		return;
+	}
+	pCmdUI->Enable(TRUE);
 }
 
 void CzpEditorView::OnEditOpen()

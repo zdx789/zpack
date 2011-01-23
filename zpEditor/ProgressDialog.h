@@ -2,7 +2,6 @@
 #include "afxcmn.h"
 #include <string>
 #include <vector>
-#include "zpack.h"
 
 class ZpExplorer;
 // ProgressDialog dialog

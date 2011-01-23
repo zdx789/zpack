@@ -6,6 +6,7 @@
 #include <algorithm>
 #include "fileEnum.h"
 #include "windows.h"
+//#include "PerfUtil.h"
 
 using namespace std;
 
@@ -38,10 +39,11 @@ void ZpExplorer::setCallback(zp::Callback callback, void* param)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-bool ZpExplorer::open(const zp::String& path)
+bool ZpExplorer::open(const zp::String& path, bool readonly)
 {
+	//BEGIN_PERF("open")
 	clear();
-	m_pack = zp::open(path.c_str(), 0);
+	m_pack = zp::open(path.c_str(), readonly ? zp::FLAG_READONLY : 0);
 	if (m_pack == NULL)
 	{
 		return false;
@@ -56,6 +58,7 @@ bool ZpExplorer::open(const zp::String& path)
 		zp::String filename = buffer;
 		insertFileToTree(filename, fileSize, false);
 	}
+	//END_PERF
 	return true;
 }
 

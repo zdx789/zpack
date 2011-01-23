@@ -51,7 +51,8 @@ BOOL CzpEditorDoc::OnNewDocument()
 
 BOOL CzpEditorDoc::OnOpenDocument(LPCTSTR lpszPathName)
 {
-	if (!m_explorer.open(lpszPathName))
+	if (!m_explorer.open(lpszPathName, false)
+		&& !m_explorer.open(lpszPathName, true))
 	{
 		::MessageBox(NULL, _T("Failed to open file."), _T("Error"), MB_OK | MB_ICONERROR);
 		return FALSE;

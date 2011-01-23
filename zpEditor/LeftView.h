@@ -3,7 +3,6 @@
 //
 
 #pragma once
-#include "zpack.h"
 #include "ProgressDialog.h"
 
 struct ZpNode;
