@@ -34,6 +34,7 @@ BEGIN_MESSAGE_MAP(CMainFrame, CFrameWndEx)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_ADD_FOLDER, &CMainFrame::OnUpdateMenu)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_DELETE, &CMainFrame::OnUpdateMenu)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_EXTRACT, &CMainFrame::OnUpdateMenu)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_EXTRACT_CUR, &CMainFrame::OnUpdateMenu)
 	ON_UPDATE_COMMAND_UI(ID_FILE_DEFRAG, &CMainFrame::OnUpdateMenu)
 END_MESSAGE_MAP()
 
@@ -272,16 +273,11 @@ void CMainFrame::OnFileOpen()
 		&& !explorer.open(filename.GetString(), true))
 	{
 		::MessageBox(NULL, _T("Invalid zpack file."), _T("Error"), MB_OK | MB_ICONERROR);
+		return;
 	}
+	::SetCurrentDirectory(dlg.GetFolderPath().GetString());
 	CString title;
-	if (explorer.getPack()->readonly())
-	{
-		title = dlg.GetFileName() + _T(" (Read Only) - zpEditor");
-	}
-	else
-	{
-		title = dlg.GetFileName() + _T(" - zpEditor");
-	}
+	title = dlg.GetFileName() + _T(" - zpEditor");
 	this->SetWindowText(title.GetString());
 	document->UpdateAllViews(NULL, TRUE);
 }

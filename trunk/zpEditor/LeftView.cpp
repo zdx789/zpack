@@ -84,7 +84,7 @@ void CLeftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 	}
 	zp::String packName;
 	const zp::String& packFilename = explorer.packageFilename();
-	size_t slashPos = packFilename.find_last_of('\\');
+	size_t slashPos = packFilename.find_last_of(_T('\\'));
 	if (slashPos == zp::String::npos)
 	{
 		packName = packFilename;
@@ -92,6 +92,10 @@ void CLeftView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 	else
 	{
 		packName = packFilename.substr(slashPos + 1, packFilename.length() - slashPos - 1);
+	}
+	if (explorer.getPack()->readonly())
+	{
+		packName += _T(" (read only)");
 	}
 	HTREEITEM rootItem = treeCtrl.InsertItem(TVIF_TEXT | TVIF_IMAGE | TVIF_SELECTEDIMAGE | TVIF_STATE | TVIF_PARAM,
 										packName.c_str(),

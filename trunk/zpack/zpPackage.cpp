@@ -29,7 +29,14 @@ Package::Package(const Char* filename, bool readonly, bool readFilename)
 		return;
 	}
 	locale loc = locale::global(locale(""));
-	m_stream.open(filename, ios_base::in | ios_base::out | ios_base::binary);
+	if (readonly)
+	{
+		m_stream.open(filename, ios_base::in | ios_base::binary);
+	}
+	else
+	{
+		m_stream.open(filename, ios_base::in | ios_base::out | ios_base::binary);
+	}
 	locale::global(loc);
 	if (!m_stream.is_open()
 		|| !readHeader()

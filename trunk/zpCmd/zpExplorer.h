@@ -47,7 +47,7 @@ public:
 
 	bool defrag();
 
-	zp::IPackage* getPack();
+	zp::IPackage* getPack() const;
 
 	const zp::String& packageFilename() const;
 

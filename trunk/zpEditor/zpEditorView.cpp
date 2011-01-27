@@ -39,8 +39,10 @@ BEGIN_MESSAGE_MAP(CzpEditorView, CListView)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_ADD_FOLDER, &CzpEditorView::OnUpdateMenu)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_DELETE, &CzpEditorView::OnUpdateMenu)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_EXTRACT, &CzpEditorView::OnUpdateMenu)
+	ON_UPDATE_COMMAND_UI(ID_EDIT_EXTRACT_CUR, &CzpEditorView::OnUpdateMenu)
 	ON_UPDATE_COMMAND_UI(ID_FILE_DEFRAG, &CzpEditorView::OnUpdateMenu)
 	ON_COMMAND(ID_EDIT_OPEN, &CzpEditorView::OnEditOpen)
+	ON_COMMAND(ID_EDIT_EXTRACT_CUR, &CzpEditorView::OnEditExtractCur)
 END_MESSAGE_MAP()
 
 // CzpEditorView construction/destruction
@@ -446,4 +448,35 @@ void CzpEditorView::OnEditOpen()
 	}
 	ZpNode* node = getSelectedNode();
 	openNode(node);
+}
+
+void CzpEditorView::OnEditExtractCur()
+{
+	ZpExplorer& explorer = GetDocument()->GetZpExplorer();
+
+	size_t fileCount = 0;
+	std::vector<std::pair<zp::String, zp::String>> params;
+	CListCtrl& listCtrl = GetListCtrl();
+	POSITION pos = listCtrl.GetFirstSelectedItemPosition();
+	if (pos == NULL)
+	{
+		//nothing selected, extract current folder
+		fileCount += explorer.countNodeFile(explorer.currentNode());
+		params.push_back(std::make_pair(_T("."), _T("")));
+	}
+	else
+	{
+		while (pos != NULL)
+		{
+			int selectedIndex = listCtrl.GetNextSelectedItem(pos);
+			ZpNode* node = (ZpNode*)listCtrl.GetItemData(selectedIndex);
+			if (node == NULL)
+			{
+				continue;
+			}
+			fileCount += explorer.countNodeFile(node);
+			params.push_back(std::make_pair(node->name, _T("")));
+		}
+	}
+	startOperation(ProgressDialog::OP_EXTRACT, fileCount, &params);
 }
