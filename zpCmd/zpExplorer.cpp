@@ -112,7 +112,7 @@ bool ZpExplorer::defrag()
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-zp::IPackage* ZpExplorer::getPack()
+zp::IPackage* ZpExplorer::getPack() const
 {
 	return m_pack;
 }

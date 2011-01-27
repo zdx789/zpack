@@ -54,9 +54,16 @@ BOOL CzpEditorDoc::OnOpenDocument(LPCTSTR lpszPathName)
 	if (!m_explorer.open(lpszPathName, false)
 		&& !m_explorer.open(lpszPathName, true))
 	{
-		::MessageBox(NULL, _T("Failed to open file."), _T("Error"), MB_OK | MB_ICONERROR);
+		::MessageBox(NULL, _T("Invalid zpack file."), _T("Error"), MB_OK | MB_ICONERROR);
 		return FALSE;
 	}
+	zp::String path = lpszPathName;
+	size_t pos = path.find_last_of(_T('\\'));
+	if (pos != std::string::npos)
+	{
+		::SetCurrentDirectory(path.substr(0, pos).c_str());
+	}
+
 	UpdateAllViews(NULL, TRUE);
 	return TRUE;
 }
