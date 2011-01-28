@@ -51,17 +51,30 @@ BOOL CzpEditorDoc::OnNewDocument()
 
 BOOL CzpEditorDoc::OnOpenDocument(LPCTSTR lpszPathName)
 {
+	zp::String filename = lpszPathName;
+	//determine whether it's a zpk file, file(s) to be added
+	size_t length = filename.length();
+	if (length < 4 || filename.substr(length - 4, 4) != _T(".zpk"))
+	{
+		if (!m_explorer.isOpen())
+		{
+			return false;
+		}
+		m_explorer.add(filename, _T(""));
+		UpdateAllViews(NULL);
+		return FALSE;
+	}
+
 	if (!m_explorer.open(lpszPathName, false)
 		&& !m_explorer.open(lpszPathName, true))
 	{
 		::MessageBox(NULL, _T("Invalid zpack file."), _T("Error"), MB_OK | MB_ICONERROR);
 		return FALSE;
 	}
-	zp::String path = lpszPathName;
-	size_t pos = path.find_last_of(_T('\\'));
+	size_t pos = filename.find_last_of(_T('\\'));
 	if (pos != std::string::npos)
 	{
-		::SetCurrentDirectory(path.substr(0, pos).c_str());
+		::SetCurrentDirectory(filename.substr(0, pos).c_str());
 	}
 
 	UpdateAllViews(NULL, TRUE);
