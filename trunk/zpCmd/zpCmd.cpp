@@ -45,7 +45,7 @@ CMD_PROC(exit)
 
 CMD_PROC(open)
 {
-	return g_explorer.open(param0);
+	return g_explorer.open(param0, false) || g_explorer.open(param0, true);
 }
 
 CMD_PROC(create)
@@ -164,6 +164,10 @@ int _tmain(int argc, _TCHAR* argv[])
 			if (g_explorer.isOpen())
 			{
 				COUT << DIR_STR << g_explorer.currentPath() << _T("\b");	//delete extra '\'
+			}
+			if (g_explorer.getPack()->readonly())
+			{
+				COUT << _T("-readonly");
 			}
 			COUT << _T(">");
 		}

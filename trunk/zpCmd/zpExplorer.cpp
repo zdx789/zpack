@@ -152,7 +152,7 @@ bool ZpExplorer::enterDir(const zp::String& path)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool ZpExplorer::add(const zp::String& srcPath, const zp::String& dstPath)
 {
-	if (m_pack == NULL || srcPath.empty())
+	if (m_pack == NULL || m_pack->readonly() || srcPath.empty())
 	{
 		return false;
 	}
@@ -206,7 +206,7 @@ bool ZpExplorer::add(const zp::String& srcPath, const zp::String& dstPath)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool ZpExplorer::remove(const zp::String& path)
 {
-	if (path.empty())
+	if (m_pack == NULL || m_pack->readonly() || path.empty())
 	{
 		return false;
 	}
@@ -250,6 +250,10 @@ bool ZpExplorer::remove(const zp::String& path)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool ZpExplorer::extract(const zp::String& srcPath, const zp::String& dstPath)
 {
+	if (m_pack == NULL)
+	{
+		return false;
+	}
 	zp::String externalPath = dstPath;
 	if (externalPath.empty())
 	{
