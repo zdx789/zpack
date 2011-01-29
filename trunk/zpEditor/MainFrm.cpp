@@ -275,9 +275,14 @@ void CMainFrame::OnFileOpen()
 		::MessageBox(NULL, _T("Invalid zpack file."), _T("Error"), MB_OK | MB_ICONERROR);
 		return;
 	}
-	::SetCurrentDirectory(dlg.GetFolderPath().GetString());
+	int slashPos = filename.ReverseFind(_T('\\'));
+	if (slashPos > 0)
+	{
+		CString folderName = filename.Left(slashPos);
+		::SetCurrentDirectory(folderName.GetString());
+	}
 	CString title;
-	title = dlg.GetFileName() + _T(" - zpEditor");
+	title = filename + _T(" - zpEditor");
 	this->SetWindowText(title.GetString());
 	document->UpdateAllViews(NULL, TRUE);
 }
