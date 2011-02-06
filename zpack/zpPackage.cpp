@@ -168,15 +168,15 @@ bool Package::addFile(const Char* externalFilename, const Char* filename, u32 fl
 	entry.hash2 = stringHash(filename, HASH_SEED2);
 	stream.seekg(0, ios::end);
 	entry.fileSize = static_cast<u32>(stream.tellg());
-	void* content = new unsigned char[entry.fileSize];
+	char* content = new char[entry.fileSize];
 	stream.seekg(0, ios::beg);
-	stream.read((char*)content, entry.fileSize);
+	stream.read(content, entry.fileSize);
 	stream.close();
 
 	insertFile(entry, filename);
 
 	m_stream.seekg(entry.byteOffset, ios::beg);
-	m_stream.write((char*)content, entry.fileSize);
+	m_stream.write(content, entry.fileSize);
 	delete[] content;
 	
 	m_dirty = true;
