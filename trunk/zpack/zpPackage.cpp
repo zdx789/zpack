@@ -137,17 +137,9 @@ bool Package::getFileInfo(u32 index, Char* filenameBuffer, u32 filenameBufferSiz
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-bool Package::addFile(const Char* externalFilename, const Char* filename, u32 flag, u32* fileSize)
+bool Package::addFile(const Char* filename, void* buffer, u32 size, u32 flag)
 {
 	if (m_readonly)
-	{
-		return false;
-	}
-	fstream stream;
-	locale loc = locale::global(locale(""));
-	stream.open(externalFilename, ios_base::in | ios_base::binary);
-	locale::global(loc);
-	if (!stream.is_open())
 	{
 		return false;
 	}
@@ -166,24 +158,13 @@ bool Package::addFile(const Char* externalFilename, const Char* filename, u32 fl
 	entry.hash0 = stringHash(filename, HASH_SEED0);
 	entry.hash1 = stringHash(filename, HASH_SEED1);
 	entry.hash2 = stringHash(filename, HASH_SEED2);
-	stream.seekg(0, ios::end);
-	entry.fileSize = static_cast<u32>(stream.tellg());
-	char* content = new char[entry.fileSize];
-	stream.seekg(0, ios::beg);
-	stream.read(content, entry.fileSize);
-	stream.close();
+	entry.fileSize = size;
 
 	insertFile(entry, filename);
 
 	m_stream.seekg(entry.byteOffset, ios::beg);
-	m_stream.write(content, entry.fileSize);
-	delete[] content;
-	
+	m_stream.write((char*)buffer, size);
 	m_dirty = true;
-	if (fileSize != NULL)
-	{
-		*fileSize = entry.fileSize;
-	}
 	return true;
 }
 

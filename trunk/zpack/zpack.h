@@ -56,7 +56,7 @@ public:
 	virtual bool getFileInfo(u32 index, Char* filenameBuffer, u32 filenameBufferSize, u32* fileSize = 0) const = 0;
 
 	//package manipulation fuctions
-	virtual bool addFile(const Char* externalFilename, const Char* filename, u32 flag = FLAG_REPLACE, u32* fileSize = NULL) = 0;
+	virtual bool addFile(const Char* filename, void* buffer, u32 size, u32 flag = FLAG_REPLACE) = 0;
 	virtual bool removeFile(const Char* filename) = 0;
 	virtual bool dirty() const = 0;
 	virtual void flush() = 0;	//nothing is really changed untill flush

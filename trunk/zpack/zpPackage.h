@@ -70,7 +70,7 @@ public:
 	virtual u32 getFileCount() const;
 	virtual bool getFileInfo(u32 index, Char* filenameBuffer, u32 filenameBufferSize, u32* fileSize = NULL) const;
 
-	virtual bool addFile(const Char* externalFilename, const Char* filename, u32 flag = FLAG_REPLACE, u32* fileSize = NULL);
+	virtual bool addFile(const Char* filename, void* buffer, u32 size, u32 flag = FLAG_REPLACE);
 	virtual bool removeFile(const Char* filename);
 	virtual bool dirty() const;
 	virtual void flush();
