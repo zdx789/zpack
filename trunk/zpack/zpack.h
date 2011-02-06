@@ -31,7 +31,7 @@ namespace zp
 
 
 typedef unsigned long u32;
-typedef unsigned __int64 u64;
+typedef unsigned long long u64;
 
 const u32 FLAG_READONLY = 1;
 const u32 FLAG_NO_FILENAME = 2;
