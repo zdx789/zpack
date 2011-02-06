@@ -327,8 +327,25 @@ bool ZpExplorer::addFile(const zp::String& filename, const zp::String& relativeP
 		return false;
 	}
 	zp::u32 fileSize = 0;
+	fstream stream;
+	locale loc = locale::global(locale(""));
+	stream.open(filename, ios_base::in | ios_base::binary);
+	locale::global(loc);
+	if (!stream.is_open())
+	{
+		return false;
+	}
+	stream.seekg(0, ios::end);
+	fileSize = static_cast<zp::u32>(stream.tellg());
+	char* buffer = new char[fileSize];
+	stream.seekg(0, ios::beg);
+	stream.read(buffer, fileSize);
+	stream.close();
+
 	zp::String internalName = m_workingPath + relativePath;
-	if (!m_pack->addFile(filename.c_str(), internalName.c_str(), zp::FLAG_REPLACE, &fileSize))
+	bool succeeded = m_pack->addFile(internalName.c_str(), buffer, fileSize, zp::FLAG_REPLACE);
+	delete[] buffer;
+	if (!succeeded)
 	{
 		return false;
 	}
