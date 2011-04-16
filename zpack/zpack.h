@@ -47,6 +47,8 @@ class IPackage
 public:
 	virtual bool readonly() const = 0;
 
+	virtual const Char* packageFilename() const = 0;
+
 	//readonly functions, not available when package is dirty
 	virtual bool hasFile(const Char* filename) const = 0;
 	virtual IFile* openFile(const Char* filename) = 0;

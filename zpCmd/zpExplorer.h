@@ -42,6 +42,7 @@ public:
 
 	bool open(const zp::String& path, bool readonly = false);
 	bool create(const zp::String& path, const zp::String& inputPath);
+	bool attach(zp::IPackage* package);
 	void close();
 	bool isOpen() const;
 
@@ -49,7 +50,7 @@ public:
 
 	zp::IPackage* getPack() const;
 
-	const zp::String& packageFilename() const;
+	const zp::Char* packageFilename() const;
 
 	bool enterDir(const zp::String& path);
 
@@ -75,6 +76,8 @@ public:
 
 private:
 	void clear();
+
+	void build();
 
 	bool addFile(const zp::String& externalPath, const zp::String& internalPath);
 	bool extractFile(const zp::String& externalPath, const zp::String& internalPath);
@@ -103,7 +106,6 @@ private:
 	zp::IPackage*	m_pack;
 	ZpNode			m_root;
 	ZpNode*			m_currentNode;
-	zp::String		m_packageFilename;
 	zp::String		m_currentPath;
 	zp::String		m_workingPath;	//user can operate on directory other than current one
 	zp::String		m_basePath;		//base path of external path (of file system)
