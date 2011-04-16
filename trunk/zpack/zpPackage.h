@@ -63,6 +63,8 @@ public:
 
 	virtual bool readonly() const;
 
+	virtual const Char* packageFilename() const;
+
 	virtual bool hasFile(const Char* filename) const;
 	virtual IFile* openFile(const Char* filename);
 	virtual void closeFile(IFile* file);
@@ -92,7 +94,7 @@ private:
 	void fixHashTable(u32 index);
 
 private:
-	String					m_packageName;
+	String					m_packageFilename;
 	mutable std::fstream	m_stream;
 	PackageHeader			m_header;
 	std::vector<int>		m_hashTable;

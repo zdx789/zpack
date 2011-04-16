@@ -47,10 +47,7 @@ Package::Package(const Char* filename, bool readonly, bool readFilename)
 		return;
 	}
 	buildHashTable();
-	if (!readonly)
-	{
-		m_packageName = filename;
-	}
+	m_packageFilename = filename;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -73,6 +70,12 @@ bool Package::valid() const
 bool Package::readonly() const
 {
 	return m_readonly;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+const Char* Package::packageFilename() const
+{
+	return m_packageFilename.c_str();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -276,7 +279,7 @@ bool Package::defrag(Callback callback, void* callbackParam)
 	{
 		return false;
 	}
-	String tempFilename = m_packageName + _T("_");
+	String tempFilename = m_packageFilename + _T("_");
 	fstream tempFile;
 	locale loc = locale::global(locale(""));
 	tempFile.open(tempFilename.c_str(), std::ios_base::out | std::ios_base::trunc | std::ios_base::binary);
@@ -351,10 +354,10 @@ bool Package::defrag(Callback callback, void* callbackParam)
 	flush();	//no need to rebuild hash table here, but it's ok b/c defrag will be slow anyway
 	m_stream.close();
 
-	Remove(m_packageName.c_str());
-	Rename(tempFilename.c_str(), m_packageName.c_str());
+	Remove(m_packageFilename.c_str());
+	Rename(tempFilename.c_str(), m_packageFilename.c_str());
 	loc = locale::global(locale(""));
-	m_stream.open(m_packageName.c_str(), ios_base::in | ios_base::out | ios_base::binary);
+	m_stream.open(m_packageFilename.c_str(), ios_base::in | ios_base::out | ios_base::binary);
 	locale::global(loc);
 	assert(m_stream.is_open());
 	return true;

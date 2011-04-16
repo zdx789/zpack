@@ -48,16 +48,7 @@ bool ZpExplorer::open(const zp::String& path, bool readonly)
 	{
 		return false;
 	}
-	m_packageFilename = path;
-	unsigned long count = m_pack->getFileCount();
-	for (unsigned long i = 0; i < count; ++i)
-	{
-		zp::Char buffer[256];
-		zp::u32 fileSize;
-		m_pack->getFileInfo(i, buffer, sizeof(buffer)/sizeof(zp::Char), &fileSize);
-		zp::String filename = buffer;
-		insertFileToTree(filename, fileSize, false);
-	}
+	build();
 	//END_PERF
 	return true;
 }
@@ -70,7 +61,6 @@ bool ZpExplorer::create(const zp::String& path, const zp::String& inputPath)
 	{
 		return false;
 	}
-	m_packageFilename = path;
 	m_pack = zp::create(path.c_str());
 	if (m_pack == NULL)
 	{
@@ -86,6 +76,15 @@ bool ZpExplorer::create(const zp::String& path, const zp::String& inputPath)
 		m_basePath += DIR_STR;
 	}
 	enumFile(m_basePath, addPackFile, this);
+	return true;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+bool ZpExplorer::attach(zp::IPackage* package)
+{
+	clear();
+	m_pack = package;
+	build();
 	return true;
 }
 
@@ -118,9 +117,9 @@ zp::IPackage* ZpExplorer::getPack() const
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-const zp::String& ZpExplorer::packageFilename() const
+const zp::Char* ZpExplorer::packageFilename() const
 {
-	return m_packageFilename;
+	return m_pack->packageFilename();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -316,6 +315,20 @@ void ZpExplorer::clear()
 	{
 		zp::close(m_pack);
 		m_pack = NULL;
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+void ZpExplorer::build()
+{
+	unsigned long count = m_pack->getFileCount();
+	for (unsigned long i = 0; i < count; ++i)
+	{
+		zp::Char buffer[256];
+		zp::u32 fileSize;
+		m_pack->getFileInfo(i, buffer, sizeof(buffer)/sizeof(zp::Char), &fileSize);
+		zp::String filename = buffer;
+		insertFileToTree(filename, fileSize, false);
 	}
 }
 
