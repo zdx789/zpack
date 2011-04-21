@@ -42,7 +42,6 @@ public:
 
 	bool open(const zp::String& path, bool readonly = false);
 	bool create(const zp::String& path, const zp::String& inputPath);
-	bool attach(zp::IPackage* package);
 	void close();
 	bool isOpen() const;
 
