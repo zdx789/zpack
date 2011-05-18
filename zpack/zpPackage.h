@@ -93,6 +93,8 @@ private:
 
 	void fixHashTable(u32 index);
 
+	u32 countFilenameSize() const;
+
 private:
 	String					m_packageFilename;
 	mutable std::fstream	m_stream;
@@ -100,7 +102,7 @@ private:
 	std::vector<int>		m_hashTable;
 	std::vector<FileEntry>	m_fileEntries;
 	std::vector<String>		m_filenames;
-	u64						m_fileEnd;
+	u64						m_packageEnd;
 	u32						m_hashMask;
 	bool					m_readonly;
 	bool					m_readFilename;
