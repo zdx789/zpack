@@ -62,6 +62,9 @@ public:
 	afx_msg void OnUpdateMenu(CCmdUI* pCmdUI);
 	afx_msg void OnEditOpen();
 	afx_msg void OnEditExtractCur();
+
+private:
+	bool m_initiallized;
 };
 
 #ifndef _DEBUG  // debug version in zpEditorView.cpp

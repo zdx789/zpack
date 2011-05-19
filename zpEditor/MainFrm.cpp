@@ -267,24 +267,7 @@ void CMainFrame::OnFileOpen()
 		return;
 	}
 	CzpEditorDoc* document = (CzpEditorDoc*)GetActiveDocument();
-	ZpExplorer& explorer = document->GetZpExplorer();
-	CString filename = dlg.GetPathName();
-	if (!explorer.open(filename.GetString(), false)
-		&& !explorer.open(filename.GetString(), true))
-	{
-		::MessageBox(NULL, _T("Invalid zpack file."), _T("Error"), MB_OK | MB_ICONERROR);
-		return;
-	}
-	int slashPos = filename.ReverseFind(_T('\\'));
-	if (slashPos > 0)
-	{
-		CString folderName = filename.Left(slashPos);
-		::SetCurrentDirectory(folderName.GetString());
-	}
-	CString title;
-	title = filename + _T(" - zpEditor");
-	this->SetWindowText(title.GetString());
-	document->UpdateAllViews(NULL, TRUE);
+	document->OnOpenDocument(dlg.GetPathName());
 }
 
 void CMainFrame::OnFileDefrag()
