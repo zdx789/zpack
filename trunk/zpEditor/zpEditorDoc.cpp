@@ -48,7 +48,6 @@ BOOL CzpEditorDoc::OnNewDocument()
 	return TRUE;
 }
 
-
 BOOL CzpEditorDoc::OnOpenDocument(LPCTSTR lpszPathName)
 {
 	zp::String filename = lpszPathName;

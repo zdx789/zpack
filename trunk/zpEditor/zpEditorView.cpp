@@ -48,6 +48,7 @@ END_MESSAGE_MAP()
 // CzpEditorView construction/destruction
 
 CzpEditorView::CzpEditorView()
+	: m_initiallized(false)
 {
 	// TODO: add construction code here
 
@@ -67,8 +68,6 @@ BOOL CzpEditorView::PreCreateWindow(CREATESTRUCT& cs)
 
 void CzpEditorView::OnInitialUpdate()
 {
-	CListView::OnInitialUpdate();
-
 	CListCtrl& listCtrl = GetListCtrl();
 
 	HMODULE hShell32 = LoadLibrary(_T("shell32.dll"));
@@ -105,6 +104,9 @@ void CzpEditorView::OnInitialUpdate()
 	lc.pszText = _T("Size");
 	lc.iSubItem = 1;
 	listCtrl.InsertColumn(1, &lc);
+	
+	m_initiallized = true;
+	CListView::OnInitialUpdate();
 }
 
 void CzpEditorView::OnRButtonUp(UINT /* nFlags */, CPoint point)
@@ -124,6 +126,10 @@ void CzpEditorView::OnContextMenu(CWnd* /* pWnd */, CPoint point)
 
 void CzpEditorView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 {
+	if (!m_initiallized)
+	{
+		return;
+	}
 	CListCtrl& listCtrl = GetListCtrl();
 	listCtrl.DeleteAllItems();
 
