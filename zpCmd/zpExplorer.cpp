@@ -333,7 +333,7 @@ bool ZpExplorer::addFile(const zp::String& filename, const zp::String& relativeP
 	zp::u32 fileSize = 0;
 	fstream stream;
 	locale loc = locale::global(locale(""));
-	stream.open(filename, ios_base::in | ios_base::binary);
+	stream.open(filename.c_str(), ios_base::in | ios_base::binary);
 	locale::global(loc);
 	if (!stream.is_open())
 	{
