@@ -1,6 +1,6 @@
 #include "zpack.h"
-#include "zppackage.h"
-#include "zpfile.h"
+#include "zpPackage.h"
+#include "zpFile.h"
 
 using namespace std;
 
