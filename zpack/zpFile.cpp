@@ -6,14 +6,14 @@ namespace zp
 File* File::s_lastSeek = NULL;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-File::File(std::fstream& stream, u64 offset, u32 size, u32 flag)
+File::File(FILE* stream, u64 offset, u32 size, u32 flag)
 	: m_stream(stream)
 	, m_offset(offset)
 	, m_flag(flag)
 	, m_size(size)
 	, m_readPos(0)
 {
-	m_stream.seekg(m_offset, std::ios::beg);
+	_fseeki64(m_stream, m_offset, SEEK_SET);
 	s_lastSeek = this;
 }
 
@@ -29,7 +29,7 @@ void File::seek(u32 pos)
 	if (pos != m_readPos || s_lastSeek != this)
 	{
 		m_readPos = pos;
-		m_stream.seekg(m_offset + m_readPos, std::ios::beg);
+		_fseeki64(m_stream, m_offset + m_readPos, SEEK_SET);
 		s_lastSeek = this;
 	}
 }
@@ -43,10 +43,10 @@ u32 File::read(void* buffer, u32 size)
 	}
 	if (s_lastSeek != this)
 	{
-		m_stream.seekg(m_offset + m_readPos, std::ios::beg);
+		_fseeki64(m_stream, m_offset + m_readPos, SEEK_SET);
 		s_lastSeek = this;
 	}
-	m_stream.read((char*)buffer, size);
+	fread(buffer, size, 1, m_stream);
 	m_readPos += size;
 	return size;
 }

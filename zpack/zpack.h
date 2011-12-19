@@ -21,12 +21,14 @@ namespace zp
 		#define _T(str) L##str
 	#endif
 	typedef std::wstring String;
+	#define Fopen _wfopen
 #else
 	typedef char Char;
 	#ifndef _T
 		#define _T(str) str
 	#endif
 	typedef std::string String;
+	#define Fopen fopen
 #endif
 
 

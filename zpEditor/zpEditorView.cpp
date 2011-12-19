@@ -131,6 +131,7 @@ void CzpEditorView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		return;
 	}
 	CListCtrl& listCtrl = GetListCtrl();
+	listCtrl.SetRedraw(FALSE);
 	listCtrl.DeleteAllItems();
 
 	const ZpExplorer& explorer = GetDocument()->GetZpExplorer();
@@ -175,6 +176,7 @@ void CzpEditorView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 		listCtrl.SetItemData(index, (DWORD_PTR)&node);
 		++index;
 	}
+	listCtrl.SetRedraw(TRUE);
 }
 
 void CzpEditorView::OnDbClick(NMHDR *pNMHDR, LRESULT *pResult)
