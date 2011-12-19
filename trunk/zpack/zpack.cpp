@@ -1,6 +1,7 @@
 #include "zpack.h"
 #include "zpPackage.h"
 #include "zpFile.h"
+#include <fstream>
 
 using namespace std;
 

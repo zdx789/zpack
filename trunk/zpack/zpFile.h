@@ -2,7 +2,7 @@
 #define __ZP_FILE_H__
 
 #include "zpack.h"
-#include <fstream>
+#include <stdio.h>
 
 namespace zp
 {
@@ -10,14 +10,14 @@ namespace zp
 class File : public IFile
 {
 public:
-	File(std::fstream& stream, u64 offset, u32 size, u32 flag);
+	File(FILE* stream, u64 offset, u32 size, u32 flag);
 
 	virtual u32 size();
 	virtual void seek(u32 pos);
 	virtual u32 read(void* buffer, u32 size);
 
 private:
-	std::fstream&	m_stream;
+	FILE*			m_stream;
 	u64				m_offset;
 	u32				m_flag;
 	u32				m_size;

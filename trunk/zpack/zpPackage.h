@@ -4,7 +4,8 @@
 #include "zpack.h"
 #include <string>
 #include <vector>
-#include <fstream>
+//#include <fstream>
+#include "stdio.h"
 
 namespace zp
 {
@@ -97,7 +98,8 @@ private:
 
 private:
 	String					m_packageFilename;
-	mutable std::fstream	m_stream;
+	//mutable std::fstream	m_stream;
+	mutable FILE*			m_stream;
 	PackageHeader			m_header;
 	std::vector<int>		m_hashTable;
 	std::vector<FileEntry>	m_fileEntries;

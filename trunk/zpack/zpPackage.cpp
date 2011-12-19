@@ -18,7 +18,8 @@ using namespace std;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 Package::Package(const Char* filename, bool readonly, bool readFilename)
-	: m_packageEnd(0)
+	: m_stream(NULL)
+	, m_packageEnd(0)
 	, m_hashMask(0)
 	, m_readonly(readonly)
 	, m_readFilename(readFilename)
@@ -31,19 +32,20 @@ Package::Package(const Char* filename, bool readonly, bool readFilename)
 	locale loc = locale::global(locale(""));
 	if (readonly)
 	{
-		m_stream.open(filename, ios_base::in | ios_base::binary);
+		m_stream = Fopen(filename, _T("rb"));
 	}
 	else
 	{
-		m_stream.open(filename, ios_base::in | ios_base::out | ios_base::binary);
+		m_stream = Fopen(filename, _T("r+b"));
+	}
+	if (m_stream == NULL)
+	{
+		return;
 	}
 	locale::global(loc);
-	if (!m_stream.is_open()
-		|| !readHeader()
-		|| !readFileEntries()
-		|| !readFilenames())
+	if (!readHeader() || !readFileEntries() || !readFilenames())
 	{
-		m_stream.close();
+		fclose(m_stream);
 		return;
 	}
 	buildHashTable();
@@ -54,16 +56,16 @@ Package::Package(const Char* filename, bool readonly, bool readFilename)
 Package::~Package()
 {
 	flush();
-	if (m_stream.is_open())
+	if (m_stream != NULL)
 	{
-		m_stream.close();
+		fclose(m_stream);
 	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool Package::valid() const
 {
-	return m_stream.is_open();
+	return (m_stream != NULL);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -165,8 +167,8 @@ bool Package::addFile(const Char* filename, void* buffer, u32 size, u32 flag)
 
 	insertFile(entry, filename);
 
-	m_stream.seekg(entry.byteOffset, ios::beg);
-	m_stream.write((char*)buffer, size);
+	_fseeki64(m_stream, entry.byteOffset, SEEK_SET);
+	fwrite(buffer, size, 1, m_stream);
 	m_dirty = true;
 	return true;
 }
@@ -238,11 +240,11 @@ void Package::flush()
 			m_header.fileEntryOffset = m_header.filenameOffset + m_header.filenameSize;
 		}
 	}
-	m_stream.seekg(m_header.fileEntryOffset, ios::beg);
+	_fseeki64(m_stream, m_header.fileEntryOffset, SEEK_SET);
 	for (u32 i = 0; i < m_fileEntries.size(); ++i)
 	{
 		FileEntry& entry = m_fileEntries[i];
-		m_stream.write((char*)&entry, sizeof(FileEntry));
+		fwrite(&entry, sizeof(FileEntry), 1, m_stream);
 	}
 	
 	m_header.fileCount = (u32)m_fileEntries.size();
@@ -252,14 +254,14 @@ void Package::flush()
 	for (u32 i = 0; i < m_filenames.size(); ++i)
 	{
 		const String& filename = m_filenames[i];
-		m_stream.write((char*)filename.c_str(), (u32)filename.length() * sizeof(Char));
-		m_stream.write((char*)_T("\n"), sizeof(Char));
+		fwrite(filename.c_str(), (u32)filename.length() * sizeof(Char), 1, m_stream);
+		fwrite(_T("\n"), sizeof(Char), 1, m_stream);
 		m_header.filenameSize += (((u32)filename.length() + 1) * sizeof(Char));
 	}
 	m_packageEnd = m_header.filenameOffset + m_header.filenameSize;
-	m_stream.seekg(0, ios::beg);
-	m_stream.write((char*)&m_header, sizeof(m_header));
-	m_stream.flush();
+	_fseeki64(m_stream, 0, SEEK_SET);
+	fwrite(&m_header, sizeof(m_header), 1, m_stream);
+	fflush(m_stream);
 	buildHashTable();
 	m_dirty = false;
 }
@@ -279,8 +281,8 @@ u64 Package::countFragmentSize() const
 		nextPos += entry.fileSize;
 		totalSize += entry.fileSize;
 	}
-	m_stream.seekg(0, ios::end);
-	u64 currentSize = m_stream.tellg();
+	_fseeki64(m_stream, 0, SEEK_END);
+	u64 currentSize = _ftelli64(m_stream);
 	return currentSize - totalSize;
 }
 
@@ -292,15 +294,15 @@ bool Package::defrag(Callback callback, void* callbackParam)
 		return false;
 	}
 	String tempFilename = m_packageFilename + _T("_");
-	fstream tempFile;
+	FILE* tempFile;
 	locale loc = locale::global(locale(""));
-	tempFile.open(tempFilename.c_str(), std::ios_base::out | std::ios_base::trunc | std::ios_base::binary);
+	tempFile = Fopen(tempFilename.c_str(), _T("wb"));// std::ios_base::out | std::ios_base::trunc | std::ios_base::binary);
 	locale::global(loc);
-	if (!tempFile.is_open())
+	if (tempFile == NULL)
 	{
 		return false;
 	}
-	tempFile.seekg(sizeof(m_header), ios::beg);
+	_fseeki64(tempFile, sizeof(m_header), SEEK_SET);
 
 	vector<char> tempBuffer;
 	u64 nextPos = m_header.headerSize;
@@ -315,7 +317,7 @@ bool Package::defrag(Callback callback, void* callbackParam)
 		if (callback != NULL && !callback(m_filenames[i].c_str(), callbackParam))
 		{
 			//stop
-			tempFile.close();
+			fclose(tempFile);
 			Remove(tempFilename.c_str());
 			return false;
 		}
@@ -334,9 +336,9 @@ bool Package::defrag(Callback callback, void* callbackParam)
 			if (currentChunkSize > 0)
 			{
 				tempBuffer.resize(currentChunkSize);
-				m_stream.seekg(currentChunkPos, ios::beg);
-				m_stream.read(&tempBuffer[0], currentChunkSize);
-				tempFile.write(&tempBuffer[0], currentChunkSize);
+				_fseeki64(m_stream, currentChunkPos, SEEK_SET);
+				fread(&tempBuffer[0], currentChunkSize, 1, m_stream);
+				fwrite(&tempBuffer[0], currentChunkSize, 1, tempFile);
 			}
 			fragmentSize = entry.byteOffset - nextPos;
 			currentChunkPos = entry.byteOffset;
@@ -350,42 +352,42 @@ bool Package::defrag(Callback callback, void* callbackParam)
 	if (currentChunkSize > 0)
 	{
 		tempBuffer.resize(currentChunkSize);
-		m_stream.seekg(currentChunkPos, ios::beg);
-		m_stream.read(&tempBuffer[0], currentChunkSize);
-		tempFile.write(&tempBuffer[0], currentChunkSize);
+		_fseeki64(m_stream, currentChunkPos, SEEK_SET);
+		fread(&tempBuffer[0], currentChunkSize, 1, m_stream);
+		fwrite(&tempBuffer[0], currentChunkSize, 1, tempFile);
 	}
 
-	m_stream.close();
-	tempFile.close();
+	fclose(m_stream);
+	fclose(tempFile);
 
 	loc = locale::global(locale(""));
-	m_stream.open(tempFilename.c_str(), ios_base::in | ios_base::out | ios_base::binary);	//only for flush()
+	m_stream = Fopen(tempFilename.c_str(), _T("r+b"));//ios_base::in | ios_base::out | ios_base::binary);	//only for flush()
 	locale::global(loc);
-	assert(m_stream.is_open());
+	assert(m_stream != NULL);
 	m_dirty = true;
 	flush();	//no need to rebuild hash table here, but it's ok b/c defrag will be slow anyway
-	m_stream.close();
+	fclose(m_stream);
 
 	Remove(m_packageFilename.c_str());
 	Rename(tempFilename.c_str(), m_packageFilename.c_str());
 	loc = locale::global(locale(""));
-	m_stream.open(m_packageFilename.c_str(), ios_base::in | ios_base::out | ios_base::binary);
+	m_stream = Fopen(m_packageFilename.c_str(), _T("r+b"));//ios_base::in | ios_base::out | ios_base::binary);
 	locale::global(loc);
-	assert(m_stream.is_open());
+	assert(m_stream != NULL);
 	return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool Package::readHeader()
 {
-	m_stream.seekg(0, ios::end);
-	m_packageEnd = m_stream.tellg();
+	_fseeki64(m_stream, 0, SEEK_END);
+	m_packageEnd = _ftelli64(m_stream);
 	if (m_packageEnd < sizeof(PackageHeader))
 	{
 		return false;
 	}
-	m_stream.seekg(0, ios::beg);
-	m_stream.read((char*)&m_header, sizeof(PackageHeader));
+	_fseeki64(m_stream, 0, SEEK_SET);
+	fread((char*)&m_header, sizeof(PackageHeader), 1, m_stream);
 	if (m_header.sign != PACKAGE_FILE_SIGN
 		|| m_header.headerSize < sizeof(PackageHeader)
 		|| m_header.fileEntrySize < sizeof(FileEntry)
@@ -407,7 +409,7 @@ bool Package::readFileEntries()
 {
 	//BEGIN_PERF("read entry")
 	m_fileEntries.resize(m_header.fileCount);
-	m_stream.seekg(m_header.fileEntryOffset, ios::beg);
+	_fseeki64(m_stream, m_header.fileEntryOffset, SEEK_SET);
 	u32 extraDataSize = m_header.fileEntrySize - sizeof(FileEntry);
 
 	u64 nextOffset = m_header.headerSize;
@@ -418,7 +420,7 @@ bool Package::readFileEntries()
 			return false;
 		}
 		FileEntry& entry = m_fileEntries[i];
-		m_stream.read((char*)&entry, sizeof(FileEntry));
+		fread(&entry, sizeof(FileEntry), 1, m_stream);
 		if (entry.byteOffset < nextOffset)
 		{
 			return false;
@@ -426,7 +428,7 @@ bool Package::readFileEntries()
 		nextOffset = entry.byteOffset + entry.fileSize;
 		if (extraDataSize > 0)
 		{
-			m_stream.seekg(extraDataSize, ios::cur);
+			_fseeki64(m_stream, extraDataSize, SEEK_CUR);
 		}
 	}
 	//END_PERF
@@ -448,8 +450,8 @@ bool Package::readFilenames()
 	Char* buffer = const_cast<Char*>(names.c_str());
 
 	m_filenames.resize(m_fileEntries.size());
-	m_stream.seekg(m_header.filenameOffset, ios::beg);
-	m_stream.read((char*)buffer, charCount * sizeof(Char));
+	_fseeki64(m_stream, m_header.filenameOffset, SEEK_SET);
+	fread(buffer, charCount * sizeof(Char), 1, m_stream);
 	names[charCount] = 0;
 	IStringStream iss(names, IStringStream::in);
 	for (u32 i = 0; i < m_fileEntries.size(); ++i)
