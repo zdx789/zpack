@@ -10,6 +10,7 @@
 #endif
 
 #include "zpEditorDoc.h"
+#include "ProgressDialog.h"
 
 #include <propkey.h>
 
@@ -59,7 +60,11 @@ BOOL CzpEditorDoc::OnOpenDocument(LPCTSTR lpszPathName)
 		{
 			return false;
 		}
-		m_explorer.add(filename, _T(""));
+		//m_explorer.add(filename, _T(""));
+		std::vector<std::pair<zp::String, zp::String>> params;
+		size_t fileCount = m_explorer.countDiskFile(filename);
+		params.push_back(std::make_pair(filename, _T("")));
+		startOperation(ProgressDialog::OP_ADD, fileCount, &params);
 		UpdateAllViews(NULL);
 		return FALSE;
 	}
@@ -170,3 +175,14 @@ ZpExplorer& CzpEditorDoc::GetZpExplorer()
 	return m_explorer;
 }
 
+void CzpEditorDoc::startOperation(ProgressDialog::Operation op, size_t fileCount,
+							const std::vector<std::pair<zp::String, zp::String>>* params)
+{
+	ProgressDialog progressDlg;
+	progressDlg.m_explorer = &m_explorer;
+	progressDlg.m_running = true;
+	progressDlg.m_params = params;
+	progressDlg.m_operation = op;
+	progressDlg.m_fileCount = fileCount;
+	progressDlg.DoModal();
+}
