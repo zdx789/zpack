@@ -168,7 +168,7 @@ CAboutDlg::CAboutDlg() : CDialogEx(CAboutDlg::IDD)
 #if defined (UNICODE)
 	m_encode = _T("Unicode Build");
 #else
-	m_encode = _T("Ansi Build");
+	m_encode = _T("ANSI Build");
 #endif
 }
 
