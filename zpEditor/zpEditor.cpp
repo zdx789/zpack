@@ -158,15 +158,24 @@ protected:
 // Implementation
 protected:
 	DECLARE_MESSAGE_MAP()
+public:
+	CString m_encode;
 };
 
 CAboutDlg::CAboutDlg() : CDialogEx(CAboutDlg::IDD)
+	, m_encode(_T(""))
 {
+#if defined (UNICODE)
+	m_encode = _T("Unicode Build");
+#else
+	m_encode = _T("Ansi Build");
+#endif
 }
 
 void CAboutDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+	DDX_Text(pDX, IDC_STATIC_ENCODE, m_encode);
 }
 
 BEGIN_MESSAGE_MAP(CAboutDlg, CDialogEx)

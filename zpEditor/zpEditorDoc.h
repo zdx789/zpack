@@ -4,6 +4,7 @@
 #pragma once
 
 #include "zpExplorer.h"
+#include "ProgressDialog.h"
 
 class CzpEditorDoc : public CDocument
 {
@@ -36,6 +37,8 @@ public:
 #endif
 
 protected:
+	void startOperation(ProgressDialog::Operation op, size_t fileCount,
+						const std::vector<std::pair<zp::String, zp::String>>* params);
 
 // Generated message map functions
 protected:
