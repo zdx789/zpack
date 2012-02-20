@@ -268,6 +268,8 @@ void CMainFrame::OnFileOpen()
 	}
 	CzpEditorDoc* document = (CzpEditorDoc*)GetActiveDocument();
 	document->OnOpenDocument(dlg.GetPathName());
+	CString title = dlg.GetFileName() + _T(" - zpEditor");
+	this->SetWindowText(title.GetString());
 }
 
 void CMainFrame::OnFileDefrag()

@@ -154,7 +154,6 @@ int _tmain(int argc, _TCHAR* argv[])
 	REGISTER_CMD(defrag);
 	REGISTER_CMD(help);
 
-	COUT << _T("please type <help>") << endl;
 	while (true)
 	{
 		const zp::String packName = g_explorer.packageFilename();
@@ -187,7 +186,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		map<zp::String, CommandProc>::iterator found = g_commandHandlers.find(command);
 		if (found == g_commandHandlers.end())
 		{
-			COUT << _T("<") << command << _T("> command not found.") << endl;
+			COUT << _T("<") << command << _T("> command not found. try 'help' command.") << endl;
 		}
 		else if (!found->second(param0, param1))
 		{
