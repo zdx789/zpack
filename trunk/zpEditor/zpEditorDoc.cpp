@@ -13,6 +13,7 @@
 #include "ProgressDialog.h"
 
 #include <propkey.h>
+#include <algorithm>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -54,13 +55,18 @@ BOOL CzpEditorDoc::OnOpenDocument(LPCTSTR lpszPathName)
 	zp::String filename = lpszPathName;
 	//determine whether it's a zpk file, file(s) to be added
 	size_t length = filename.length();
-	if (length < 4 || filename.substr(length - 4, 4) != _T(".zpk"))
+	zp::String lowerExt;
+	if (length >= 4)
+	{
+		lowerExt = filename.substr(length - 4, 4);
+		std::transform(lowerExt.begin(), lowerExt.end(), lowerExt.begin(), ::tolower);
+	}
+	if (lowerExt != _T(".zpk"))
 	{
 		if (!m_explorer.isOpen())
 		{
 			return false;
 		}
-		//m_explorer.add(filename, _T(""));
 		std::vector<std::pair<zp::String, zp::String>> params;
 		size_t fileCount = m_explorer.countDiskFile(filename);
 		params.push_back(std::make_pair(filename, _T("")));
