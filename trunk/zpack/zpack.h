@@ -37,7 +37,6 @@ typedef unsigned long long u64;
 
 const u32 FLAG_READONLY = 1;
 const u32 FLAG_NO_FILENAME = 2;
-const u32 FLAG_REPLACE = 4;
 
 typedef bool (*Callback)(const Char* path, void* param);
 
@@ -60,10 +59,10 @@ public:
 	virtual bool getFileInfo(u32 index, Char* filenameBuffer, u32 filenameBufferSize, u32* fileSize = 0) const = 0;
 
 	//package manipulation fuctions
-	virtual bool addFile(const Char* filename, void* buffer, u32 size, u32 flag = FLAG_REPLACE) = 0;
+	virtual bool addFile(const Char* filename, void* buffer, u32 size) = 0;
 	virtual bool removeFile(const Char* filename) = 0;
 	virtual bool dirty() const = 0;
-	virtual void flush() = 0;	//nothing is really changed untill flush
+	virtual void flush() = 0;	//nothing is really changed untill calling this function
 
 	virtual u64 countFragmentSize() const = 0;
 	virtual bool defrag(Callback callback, void* callbackParam) = 0;	//can be very slow, don't call this all the time
