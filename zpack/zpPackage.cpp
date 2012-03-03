@@ -2,7 +2,6 @@
 #include "zpFile.h"
 #include <cassert>
 #include <sstream>
-//#include "PerfUtil.h"
 
 namespace zp
 {
@@ -10,9 +9,7 @@ namespace zp
 const u32 MIN_HASH_BITS = 8;
 const u32 MIN_HASH_TABLE_SIZE = (1<<MIN_HASH_BITS);
 const u32 MAX_HASH_TABLE_SIZE = 0x100000;
-const u32 HASH_SEED0 = 31;	//not a good idea to change these numbers, must be identical between reading and writing code
-const u32 HASH_SEED1 = 131;
-const u32 HASH_SEED2 = 1313;
+const u32 HASH_SEED = 131;
 
 using namespace std;
 
@@ -46,6 +43,7 @@ Package::Package(const Char* filename, bool readonly, bool readFilename)
 	if (!readHeader() || !readFileEntries() || !readFilenames())
 	{
 		fclose(m_stream);
+		m_stream = NULL;
 		return;
 	}
 	buildHashTable();
@@ -142,7 +140,7 @@ bool Package::getFileInfo(u32 index, Char* filenameBuffer, u32 filenameBufferSiz
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-bool Package::addFile(const Char* filename, void* buffer, u32 size, u32 flag)
+bool Package::addFile(const Char* filename, void* buffer, u32 size)
 {
 	if (m_readonly)
 	{
@@ -152,23 +150,19 @@ bool Package::addFile(const Char* filename, void* buffer, u32 size, u32 flag)
 	if (fileIndex >= 0)
 	{
 		//file exist
-		if ((flag & FLAG_REPLACE) == 0)
-		{
-			return false;
-		}
 		m_fileEntries[fileIndex].flag |= FILE_FLAG_DELETED;
 	}
 	FileEntry entry;
-	entry.flag = 0;
-	entry.hash0 = stringHash(filename, HASH_SEED0);
-	entry.hash1 = stringHash(filename, HASH_SEED1);
-	entry.hash2 = stringHash(filename, HASH_SEED2);
+	entry.nameHash = stringHash(filename, HASH_SEED);
 	entry.fileSize = size;
+	entry.flag = 0;
 
 	insertFile(entry, filename);
-
-	_fseeki64(m_stream, entry.byteOffset, SEEK_SET);
-	fwrite(buffer, size, 1, m_stream);
+	if (size > 0)
+	{
+		_fseeki64(m_stream, entry.byteOffset, SEEK_SET);
+		fwrite(buffer, size, 1, m_stream);
+	}
 	m_dirty = true;
 	return true;
 }
@@ -397,7 +391,7 @@ bool Package::readHeader()
 	{
 		return false;
 	}
-	if (m_header.version != CURRENT_VERSION && !m_readonly)
+	if (m_header.version != CURRENT_VERSION)
 	{
 		return false;
 	}
@@ -407,7 +401,6 @@ bool Package::readHeader()
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool Package::readFileEntries()
 {
-	//BEGIN_PERF("read entry")
 	m_fileEntries.resize(m_header.fileCount);
 	_fseeki64(m_stream, m_header.fileEntryOffset, SEEK_SET);
 	u32 extraDataSize = m_header.fileEntrySize - sizeof(FileEntry);
@@ -431,14 +424,12 @@ bool Package::readFileEntries()
 			_fseeki64(m_stream, extraDataSize, SEEK_CUR);
 		}
 	}
-	//END_PERF
 	return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool Package::readFilenames()
 {
-	//BEGIN_PERF("read filename")
 	if (m_fileEntries.empty() || !m_readFilename)
 	{
 		return true;
@@ -460,14 +451,12 @@ bool Package::readFilenames()
 		iss.getline(out, sizeof(out)/sizeof(Char));
 		m_filenames[i] = out;
 	}
-	//END_PERF
 	return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool Package::buildHashTable()
 {
-	//BEGIN_PERF("buid hash")
 	u32 tableSize = MIN_HASH_TABLE_SIZE / 2;
 	u32 hashBits = MIN_HASH_BITS - 1;
 	while (tableSize < m_header.fileCount)
@@ -479,17 +468,22 @@ bool Package::buildHashTable()
 		tableSize *= 2;
 		++hashBits;
 	}
-	tableSize *= 2;
-	++hashBits;
+	tableSize *= 4;
+	hashBits += 2;
 	m_hashMask = (1 << hashBits) - 1;
 
+	bool hashConflict = false;
 	m_hashTable.clear();
 	m_hashTable.resize(tableSize, -1);
 	for (u32 i = 0; i < m_header.fileCount; ++i)
 	{
-		u32 index = (m_fileEntries[i].hash0 & m_hashMask);
+		u32 index = (m_fileEntries[i].nameHash & m_hashMask);
 		while (m_hashTable[index] != -1)
 		{
+			if (!hashConflict && m_fileEntries[m_hashTable[index]].nameHash == m_fileEntries[i].nameHash)
+			{
+				hashConflict = true;
+			}
 			if (++index >= tableSize)
 			{
 				index = 0;
@@ -497,33 +491,20 @@ bool Package::buildHashTable()
 		}
 		m_hashTable[index] = i;
 	}
-	//END_PERF
-	return true;
+	return !hashConflict;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 int Package::getFileIndex(const Char* filename) const
 {
-	u32 hash0 = stringHash(filename, HASH_SEED0);
-#if (ZP_HASH_NUM > 1)
-	u32 hash1 = stringHash(filename, HASH_SEED1);
-#endif
-#if (ZP_HASH_NUM > 2)
-	u32 hash2 = stringHash(filename, HASH_SEED2);
-#endif
-	u32 hashIndex = (hash0 & m_hashMask);
+	u64 hash = stringHash(filename, HASH_SEED);
+
+	u32 hashIndex = (hash & m_hashMask);
 	int fileIndex = m_hashTable[hashIndex];
 	while (fileIndex >= 0)
 	{
 		const FileEntry& entry = m_fileEntries[fileIndex];
-		if (entry.hash0 == hash0
-#if (ZP_HASH_NUM > 1)
-			&& entry.hash1 == hash1
-#endif
-#if (ZP_HASH_NUM > 2)
-			&& entry.hash2 == hash2
-#endif
-			)
+		if (entry.nameHash == hash)
 		{
 			if ((entry.flag & FILE_FLAG_DELETED) != 0)
 			{
@@ -545,31 +526,26 @@ void Package::insertFile(FileEntry& entry, const Char* filename)
 {
 	u32 maxIndex = (u32)m_fileEntries.size();
 	u64 lastEnd = m_header.headerSize;
-	//if (entry.fileSize != 0)
+
+	//file with 0 size will alway be put to the end
+	for (u32 fileIndex = 0; fileIndex < maxIndex; ++fileIndex)
 	{
-		//file with 0 size will alway be put to the end
-		for (u32 fileIndex = 0; fileIndex < maxIndex; ++fileIndex)
+		FileEntry& thisEntry = m_fileEntries[fileIndex];
+		if (thisEntry.byteOffset >= lastEnd + entry.fileSize
+			&& (lastEnd + entry.fileSize <= m_header.fileEntryOffset
+			|| lastEnd >= m_header.filenameOffset + m_header.filenameSize))	//don't overwrite old file entries and filenames
 		{
-			FileEntry& thisEntry = m_fileEntries[fileIndex];
-			if (thisEntry.byteOffset >= lastEnd + entry.fileSize
-				&& (lastEnd + entry.fileSize <= m_header.fileEntryOffset
-				|| lastEnd >= m_header.filenameOffset + m_header.filenameSize))	//don't overwrite old file entries and filenames
-			{
-				entry.byteOffset = lastEnd;
-				m_fileEntries.insert(m_fileEntries.begin() + fileIndex, entry);
-				m_filenames.insert(m_filenames.begin() + fileIndex, filename);
-				assert(m_filenames.size() == m_fileEntries.size());
-				//user may call addFile or removeFile before calling flush, so hash table need to be fixed
-				fixHashTable(fileIndex);
-				return;
-			}
-			lastEnd = thisEntry.byteOffset + thisEntry.fileSize;
+			entry.byteOffset = lastEnd;
+			m_fileEntries.insert(m_fileEntries.begin() + fileIndex, entry);
+			m_filenames.insert(m_filenames.begin() + fileIndex, filename);
+			assert(m_filenames.size() == m_fileEntries.size());
+			//user may call addFile or removeFile before calling flush, so hash table need to be fixed
+			fixHashTable(fileIndex);
+			return;
 		}
+		lastEnd = thisEntry.byteOffset + thisEntry.fileSize;
 	}
-	//else
-	//{
-	//	lastEnd = m_packageEnd;
-	//}
+
 	if (m_header.fileEntryOffset > lastEnd + entry.fileSize)
 	{
 		entry.byteOffset = lastEnd;
@@ -586,15 +562,20 @@ void Package::insertFile(FileEntry& entry, const Char* filename)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-u32 Package::stringHash(const Char* str, u32 seed) const
+u64 Package::stringHash(const Char* str, u32 seed) const
 {
-	u32 out = 0;
+	u64 out = 0;
 	while (*str)
 	{
+		Char ch = *(str++);
+		if (ch == _T('\\'))
+		{
+			ch = _T('/');
+		}
 	#if (ZP_CASE_SENSITIVE)
-		out = out * seed + *(str++);
+		out = out * seed + ch;
 	#else
-		out = out * seed + tolower(*(str++));
+		out = out * seed + tolower(ch);
 	#endif
 	}
 	return out;

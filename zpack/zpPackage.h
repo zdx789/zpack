@@ -4,7 +4,6 @@
 #include "zpack.h"
 #include <string>
 #include <vector>
-//#include <fstream>
 #include "stdio.h"
 
 namespace zp
@@ -21,11 +20,9 @@ namespace zp
 #endif
 
 const u32 PACKAGE_FILE_SIGN = 'KAPZ';
-const u32 CURRENT_VERSION = '0010';
+const u32 CURRENT_VERSION = '0020';
 
 const u32 FILE_FLAG_DELETED = 1;
-
-#define ZP_HASH_NUM		3	//can be 1, 2 or 3. the less the faster	
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 struct PackageHeader
@@ -46,10 +43,8 @@ struct PackageHeader
 struct FileEntry
 {
 	u64	byteOffset;
+	u64	nameHash;
 	u32	fileSize;
-	u32	hash0;
-	u32	hash1;
-	u32	hash2;
 	u32 flag;
 };
 
@@ -73,7 +68,7 @@ public:
 	virtual u32 getFileCount() const;
 	virtual bool getFileInfo(u32 index, Char* filenameBuffer, u32 filenameBufferSize, u32* fileSize = NULL) const;
 
-	virtual bool addFile(const Char* filename, void* buffer, u32 size, u32 flag = FLAG_REPLACE);
+	virtual bool addFile(const Char* filename, void* buffer, u32 size);
 	virtual bool removeFile(const Char* filename);
 	virtual bool dirty() const;
 	virtual void flush();
@@ -90,7 +85,7 @@ private:
 	int getFileIndex(const Char* filename) const;
 	void insertFile(FileEntry& entry, const Char* filename);
 
-	u32 stringHash(const Char* str, u32 seed) const;
+	u64 stringHash(const Char* str, u32 seed) const;
 
 	void fixHashTable(u32 index);
 
@@ -98,7 +93,6 @@ private:
 
 private:
 	String					m_packageFilename;
-	//mutable std::fstream	m_stream;
 	mutable FILE*			m_stream;
 	PackageHeader			m_header;
 	std::vector<int>		m_hashTable;
