@@ -53,27 +53,6 @@ BOOL CzpEditorDoc::OnNewDocument()
 BOOL CzpEditorDoc::OnOpenDocument(LPCTSTR lpszPathName)
 {
 	zp::String filename = lpszPathName;
-	//determine whether it's a zpk file, file(s) to be added
-	size_t length = filename.length();
-	zp::String lowerExt;
-	if (length >= 4)
-	{
-		lowerExt = filename.substr(length - 4, 4);
-		std::transform(lowerExt.begin(), lowerExt.end(), lowerExt.begin(), ::tolower);
-	}
-	if (lowerExt != _T(".zpk"))
-	{
-		if (!m_explorer.isOpen())
-		{
-			return false;
-		}
-		std::vector<std::pair<zp::String, zp::String>> params;
-		size_t fileCount = m_explorer.countDiskFile(filename);
-		params.push_back(std::make_pair(filename, _T("")));
-		startOperation(ProgressDialog::OP_ADD, fileCount, &params);
-		UpdateAllViews(NULL);
-		return FALSE;
-	}
 
 	if (!m_explorer.open(lpszPathName, false)
 		&& !m_explorer.open(lpszPathName, true))
@@ -89,6 +68,47 @@ BOOL CzpEditorDoc::OnOpenDocument(LPCTSTR lpszPathName)
 
 	UpdateAllViews(NULL, TRUE);
 	return TRUE;
+}
+
+//double g_addTime = 0;
+
+void CzpEditorDoc::addFilesToPackage(std::vector<zp::String>& filenames)
+{
+	if (!m_explorer.isOpen())
+	{
+		return;
+	}
+
+	//__int64 perfBefore, perfAfter, perfFreq;
+	//::QueryPerformanceFrequency((LARGE_INTEGER*)&perfFreq);
+	//::QueryPerformanceCounter((LARGE_INTEGER*)&perfBefore);
+
+	std::vector<std::pair<zp::String, zp::String>> params;
+	size_t fileCount = 0;
+	for (zp::u32 i = 0; i < filenames.size(); ++i)
+	{
+		fileCount += m_explorer.countDiskFile(filenames[i]);
+		params.push_back(std::make_pair(filenames[i], _T("")));
+	}
+	startOperation(ProgressDialog::OP_ADD, fileCount, &params);
+
+	//::QueryPerformanceCounter((LARGE_INTEGER*)&perfAfter);
+	//double perfTime = 1000.0 * (perfAfter - perfBefore) / perfFreq;
+	//g_addTime += perfTime;
+
+	//temp
+	//extern double g_compressTime;
+	//extern double g_addFileTime;
+	//extern double g_readTime;
+	//char out[128];
+	//sprintf(out, "total:%fms, readTime:%fms, addFile:%fms, compress:%fms", g_addTime, g_readTime, g_addFileTime, g_compressTime);
+	//::MessageBoxA(NULL, out, "compress", MB_OK);
+	//g_compressTime = 0;
+	//g_addFileTime = 0;
+	//g_addTime = 0;
+	//g_readTime = 0;
+
+	UpdateAllViews(NULL);
 }
 
 // CzpEditorDoc serialization

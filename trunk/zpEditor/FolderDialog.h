@@ -5,7 +5,7 @@
 #ifndef _CFolderDialog_
 #define _CFolderDialog_
 
-#include <shlobj.h>
+//#include <shlobj.h>
 
 class CFolderDialog  
 {

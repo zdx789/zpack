@@ -51,6 +51,7 @@ public:
 	afx_msg void OnFileOpen();
 	afx_msg void OnFileDefrag();
 	afx_msg void OnUpdateMenu(CCmdUI* pCmdUI);
+	afx_msg void OnDropFiles(HDROP hDropInfo);
 };
 
 

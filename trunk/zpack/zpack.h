@@ -31,12 +31,16 @@ namespace zp
 	#define Fopen fopen
 #endif
 
-
+typedef unsigned char u8;
+typedef unsigned short u16;
 typedef unsigned long u32;
 typedef unsigned long long u64;
 
-const u32 FLAG_READONLY = 1;
-const u32 FLAG_NO_FILENAME = 2;
+const u32 PACK_READONLY = 1;
+const u32 PACK_NO_FILENAME = 2;
+
+const u32 FILE_DELETE = 1;
+const u32 FILE_COMPRESS = 2;
 
 typedef bool (*Callback)(const Char* path, void* param);
 
@@ -50,19 +54,33 @@ public:
 
 	virtual const Char* packageFilename() const = 0;
 
+	///////////////////////////////////////////////////////////////////////////////////////////////
 	//readonly functions, not available when package is dirty
+	//IFile will become unavailable after package is modified
+
 	virtual bool hasFile(const Char* filename) const = 0;
 	virtual IFile* openFile(const Char* filename) = 0;
 	virtual void closeFile(IFile* file) = 0;
 
 	virtual u32 getFileCount() const = 0;
-	virtual bool getFileInfo(u32 index, Char* filenameBuffer, u32 filenameBufferSize, u32* fileSize = 0) const = 0;
+	virtual bool getFileInfo(u32 index, Char* filenameBuffer, u32 filenameBufferSize,
+							u32* fileSize = 0, u32* originSize = 0, u32* flag = 0) const = 0;
 
-	//package manipulation fuctions
-	virtual bool addFile(const Char* filename, void* buffer, u32 size) = 0;
+
+	///////////////////////////////////////////////////////////////////////////////////////////////
+	//package manipulation fuctions, not available in read only mode
+
+	//do not add same file more than once between flush() call
+	virtual bool addFile(const Char* filename, const u8* buffer, u32 size, u32 flag) = 0;
+
+	//can not remove files added after last flush() call
 	virtual bool removeFile(const Char* filename) = 0;
+
+	//return true if there's any unsaved change of package
 	virtual bool dirty() const = 0;
-	virtual void flush() = 0;	//nothing is really changed untill calling this function
+
+	//nothing is really changed untill calling this function
+	virtual void flush() = 0;
 
 	virtual u64 countFragmentSize() const = 0;
 	virtual bool defrag(Callback callback, void* callbackParam) = 0;	//can be very slow, don't call this all the time
@@ -76,16 +94,18 @@ class IFile
 {
 public:
 	virtual u32 size() = 0;
+
 	virtual void seek(u32 pos) = 0;
-	virtual u32 read(void* buffer, u32 size) = 0;
+
+	virtual u32 read(u8* buffer, u32 size) = 0;
 
 protected:
 	virtual ~IFile(){}
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-IPackage* create(const Char* filename);
-IPackage* open(const Char* filename, u32 flag = FLAG_READONLY | FLAG_NO_FILENAME);
+IPackage* create(const Char* filename, u32 chunkSize = 0x40000);
+IPackage* open(const Char* filename, u32 flag = PACK_READONLY | PACK_NO_FILENAME);
 void close(IPackage* package);
 
 }

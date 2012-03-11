@@ -410,6 +410,7 @@ void CzpEditorView::openNode(ZpNode* node)
 	{
 		TCHAR tempPath[MAX_PATH];
 		::GetTempPath(sizeof(tempPath) / sizeof(TCHAR), tempPath);
+		explorer.setCallback(NULL, NULL);
 		explorer.extract(node->name.c_str(), tempPath);
 		::ShellExecute(NULL, _T("open"), node->name.c_str(), NULL, tempPath, SW_SHOW);
 		return;

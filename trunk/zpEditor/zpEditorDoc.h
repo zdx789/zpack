@@ -3,8 +3,9 @@
 //
 #pragma once
 
-#include "zpExplorer.h"
 #include "ProgressDialog.h"
+#include "zpExplorer.h"
+#include <vector>
 
 class CzpEditorDoc : public CDocument
 {
@@ -35,6 +36,8 @@ public:
 	virtual void AssertValid() const;
 	virtual void Dump(CDumpContext& dc) const;
 #endif
+
+	void addFilesToPackage(std::vector<zp::String>& filenames);
 
 protected:
 	void startOperation(ProgressDialog::Operation op, size_t fileCount,

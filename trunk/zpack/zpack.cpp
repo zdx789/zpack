@@ -12,8 +12,8 @@ namespace zp
 IPackage* open(const Char* filename, u32 flag)
 {
 	Package* package = new Package(filename, 
-									(flag & FLAG_READONLY) != 0,
-									(flag & FLAG_NO_FILENAME) == 0);
+									(flag & PACK_READONLY) != 0,
+									(flag & PACK_NO_FILENAME) == 0);
 	if (!package->valid())
 	{
 		delete package;
@@ -29,7 +29,7 @@ void close(IPackage* package)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-IPackage* create(const Char* filename)
+IPackage* create(const Char* filename, u32 chunkSize)
 {
 	fstream stream;
 	locale loc = locale::global(locale(""));
@@ -48,6 +48,7 @@ IPackage* create(const Char* filename)
 	header.fileEntryOffset = sizeof(PackageHeader);
 	header.filenameOffset = sizeof(PackageHeader);
 	header.filenameSize = 0;
+	header.chunkSize = chunkSize;
 	header.flag = 0;
 	header.reserved = 0;
 
