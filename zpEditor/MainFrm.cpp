@@ -11,6 +11,8 @@
 #include "zpEditorDoc.h"
 #include "ProgressDialog.h"
 #include <sstream>
+#include <algorithm>
+#include <vector>
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -36,6 +38,7 @@ BEGIN_MESSAGE_MAP(CMainFrame, CFrameWndEx)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_EXTRACT, &CMainFrame::OnUpdateMenu)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_EXTRACT_CUR, &CMainFrame::OnUpdateMenu)
 	ON_UPDATE_COMMAND_UI(ID_FILE_DEFRAG, &CMainFrame::OnUpdateMenu)
+	ON_WM_DROPFILES()
 END_MESSAGE_MAP()
 
 static UINT indicators[] =
@@ -326,4 +329,49 @@ void CMainFrame::OnUpdateMenu(CCmdUI* pCmdUI)
 		return;
 	}
 	pCmdUI->Enable(TRUE);
+}
+
+
+void CMainFrame::OnDropFiles(HDROP hDropInfo)
+{
+	SetActiveWindow();      // activate us first !
+
+	UINT nFiles = ::DragQueryFile(hDropInfo, (UINT)-1, NULL, 0);
+	if (nFiles == 1)
+	{
+		//if only 1 file with .zpk extension, open it as a package
+		TCHAR szFileName[_MAX_PATH];
+		::DragQueryFile(hDropInfo, 0, szFileName, _MAX_PATH);
+		zp::String filename = szFileName;
+		size_t length = filename.length();
+		zp::String lowerExt;
+		if (length >= 4)
+		{
+			lowerExt = filename.substr(length - 4, 4);
+			std::transform(lowerExt.begin(), lowerExt.end(), lowerExt.begin(), ::tolower);
+		}
+		if (lowerExt == _T(".zpk"))
+		{
+			CWinApp* pApp = AfxGetApp();
+			pApp->OpenDocumentFile(szFileName);
+			return;
+		}
+	}
+
+	//more than 1 file, try to add to package
+	std::vector<zp::String> filenames(nFiles);
+	for (UINT i = 0; i < nFiles; i++)
+	{
+		TCHAR szFileName[_MAX_PATH];
+		::DragQueryFile(hDropInfo, i, szFileName, _MAX_PATH);
+		filenames[i] = szFileName;
+	}
+	CzpEditorDoc* doc = (CzpEditorDoc*)GetActiveDocument();
+	if (doc != NULL)
+	{
+		doc->addFilesToPackage(filenames);
+	}
+	::DragFinish(hDropInfo);
+
+	//CFrameWndEx::OnDropFiles(hDropInfo);
 }

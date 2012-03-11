@@ -111,6 +111,8 @@ private:
 	zp::Callback	m_callback;
 	void*			m_callbackParam;
 	unsigned long	m_fileCount;
+	zp::u8*			m_readBuffer;
+	zp::u32			m_readBufferSize;
 };
 
 #endif
