@@ -146,13 +146,15 @@ DWORD WINAPI ProgressDialog::threadFunc(LPVOID pointer)
 		switch (dlg->m_operation)
 		{
 		case ProgressDialog::OP_ADD:
-			dlg->m_explorer->add(p.first, p.second);
+			dlg->m_explorer->add(p.first, p.second, false);
 			break;
 		case ProgressDialog::OP_EXTRACT:
 			dlg->m_explorer->extract(p.first, p.second);
 			break;
 		}
 	}
+	//单个add已经不再flush，避免一次添加产生碎片
+	dlg->m_explorer->flush();
 	dlg->m_running = false;
 	return 0;
 }

@@ -116,7 +116,7 @@ IFile* Package::openFile(const Char* filename)
 		return NULL;
 	}
 	FileEntry& entry = m_fileEntries[fileIndex];
-	if ((entry.flag & FILE_COMPRESS) == 0 || entry.fileSize == entry.originSize)
+	if ((entry.flag & FILE_COMPRESS) == 0)
 	{
 		return new File(this, entry.byteOffset, entry.fileSize, entry.flag);
 	}
@@ -693,7 +693,7 @@ void Package::writeFileContent(FileEntry& entry, const u8* buffer)
 		//::QueryPerformanceFrequency((LARGE_INTEGER*)&perfFreq);
 		//::QueryPerformanceCounter((LARGE_INTEGER*)&perfBefore);
 
-		int ret = compress2(dstBuffer, &dstSize, srcBuffer, srcSize, Z_DEFAULT_COMPRESSION);
+		int ret = compress(dstBuffer, &dstSize, srcBuffer, srcSize);
 
 		//::QueryPerformanceCounter((LARGE_INTEGER*)&perfAfter);
 		//double perfTime = 1000.0 * (perfAfter - perfBefore) / perfFreq;
@@ -716,18 +716,18 @@ void Package::writeFileContent(FileEntry& entry, const u8* buffer)
 		entry.fileSize += dstSize;
 		srcBuffer += srcSize;
 	}
-	if (entry.fileSize == entry.originSize)
-	{
-		//none of the chunks is actually compressed, rewrite as non-compressed file
-		entry.flag &= (~FILE_COMPRESS);
-		//if only 1 chunk, no need to rewrite b/c there's no chunk pos array
-		if (chunkCount > 1)
-		{
-			_fseeki64(m_stream, entry.byteOffset, SEEK_SET);
-			fwrite(buffer, entry.fileSize, 1, m_stream);
-		}
-		return;
-	}
+	//if (entry.fileSize == entry.originSize)
+	//
+	//	//none of the chunks is actually compressed, rewrite as non-compressed file
+	//	entry.flag &= (~FILE_COMPRESS);
+	//	//if only 1 chunk, no need to rewrite b/c there's no chunk pos array
+	//	if (chunkCount > 1)
+	//	{
+	//		_fseeki64(m_stream, entry.byteOffset, SEEK_SET);
+	//		fwrite(buffer, entry.fileSize, 1, m_stream);
+	//	}
+	//	return;
+	//}
 	//END_PERF
 
 	if (chunkCount > 1)
@@ -735,6 +735,11 @@ void Package::writeFileContent(FileEntry& entry, const u8* buffer)
 		entry.fileSize += chunkCount * sizeof(u32);
 		_fseeki64(m_stream, entry.byteOffset, SEEK_SET);
 		fwrite((char*)&m_chunkPosBuffer[0], chunkCount * sizeof(u32), 1, m_stream);
+	}
+	//temp
+	if (m_packageEnd == entry.byteOffset + entry.originSize)
+	{
+		m_packageEnd = entry.byteOffset + entry.fileSize;
 	}
 }
 
