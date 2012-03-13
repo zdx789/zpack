@@ -152,7 +152,7 @@ bool ZpExplorer::enterDir(const zp::String& path)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool ZpExplorer::add(const zp::String& srcPath, const zp::String& dstPath)
+bool ZpExplorer::add(const zp::String& srcPath, const zp::String& dstPath, bool flush)
 {
 	if (m_pack == NULL || m_pack->readonly() || srcPath.empty())
 	{
@@ -184,7 +184,10 @@ bool ZpExplorer::add(const zp::String& srcPath, const zp::String& dstPath)
 		//it's a file
 		zp::String nudeFilename = srcPath.substr(pos + 1, srcPath.length() - pos - 1);
 		bool ret = addFile(srcPath, nudeFilename);
-		m_pack->flush();
+		if (ret && flush)
+		{
+			m_pack->flush();
+		}
 		::FindClose(findFile);
 		return ret;
 	}
@@ -199,10 +202,15 @@ bool ZpExplorer::add(const zp::String& srcPath, const zp::String& dstPath)
 	{
 		searchDirectory += DIR_STR;
 	}
-	enumFile(searchDirectory, addPackFile, this);
-	m_pack->flush();
+	bool ret = enumFile(searchDirectory, addPackFile, this);
+	
 	::FindClose(findFile);
-	return true;
+
+	if (ret && flush)
+	{
+		m_pack->flush();
+	}
+	return ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -247,6 +255,15 @@ bool ZpExplorer::remove(const zp::String& path)
 	getNodePath(m_currentNode, m_currentPath);
 	m_pack->flush();
 	return ret;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void ZpExplorer::flush()
+{
+	if (m_pack != NULL)
+	{
+		m_pack->flush();
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

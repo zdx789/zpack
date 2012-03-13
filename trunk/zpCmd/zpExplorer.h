@@ -55,10 +55,12 @@ public:
 
 	//srcPath can't be empty
 	//if dstPath is empty, file/dir will be add to current path of package
-	bool add(const zp::String& srcPath, const zp::String& dstPath);
+	bool add(const zp::String& srcPath, const zp::String& dstPath, bool flush = true);
 
 	bool remove(const zp::String& path);
 	
+	void flush();
+
 	//if srcPath is empty, current path of package will be extracted
 	//if dstPath is empty, file/dir will be extracted to current path of system
 	bool extract(const zp::String& srcPath, const zp::String& dstPath);
