@@ -22,7 +22,7 @@ using namespace std;
 	typedef std::istringstream IStringStream;
 #endif
 
-bool zpcallback(const zp::Char* path, void* param)
+bool zpcallback(const zp::Char* path, zp::u32 fileSize, void* param)
 {
 	COUT << path << endl;
 	return true;

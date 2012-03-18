@@ -84,13 +84,13 @@ void CzpEditorDoc::addFilesToPackage(std::vector<zp::String>& filenames)
 	//::QueryPerformanceCounter((LARGE_INTEGER*)&perfBefore);
 
 	std::vector<std::pair<zp::String, zp::String>> params;
-	size_t fileCount = 0;
+	zp::u64 totalFileSize = 0;
 	for (zp::u32 i = 0; i < filenames.size(); ++i)
 	{
-		fileCount += m_explorer.countDiskFile(filenames[i]);
+		totalFileSize += m_explorer.countDiskFileSize(filenames[i]);
 		params.push_back(std::make_pair(filenames[i], _T("")));
 	}
-	startOperation(ProgressDialog::OP_ADD, fileCount, &params);
+	startOperation(ProgressDialog::OP_ADD, totalFileSize, &params);
 
 	//::QueryPerformanceCounter((LARGE_INTEGER*)&perfAfter);
 	//double perfTime = 1000.0 * (perfAfter - perfBefore) / perfFreq;
@@ -201,7 +201,7 @@ ZpExplorer& CzpEditorDoc::GetZpExplorer()
 	return m_explorer;
 }
 
-void CzpEditorDoc::startOperation(ProgressDialog::Operation op, size_t fileCount,
+void CzpEditorDoc::startOperation(ProgressDialog::Operation op, zp::u64 totalFileSize,
 							const std::vector<std::pair<zp::String, zp::String>>* params)
 {
 	ProgressDialog progressDlg;
@@ -209,6 +209,6 @@ void CzpEditorDoc::startOperation(ProgressDialog::Operation op, size_t fileCount
 	progressDlg.m_running = true;
 	progressDlg.m_params = params;
 	progressDlg.m_operation = op;
-	progressDlg.m_fileCount = fileCount;
+	progressDlg.m_totalFileSize = totalFileSize;
 	progressDlg.DoModal();
 }

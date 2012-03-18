@@ -301,7 +301,7 @@ void CMainFrame::OnFileDefrag()
 	progressDlg.m_running = true;
 	progressDlg.m_params = NULL;
 	progressDlg.m_operation = ProgressDialog::OP_DEFRAG;
-	progressDlg.m_fileCount = explorer.getPack()->getFileCount();
+	progressDlg.m_totalFileSize = explorer.countNodeFileSize(explorer.rootNode());
 	progressDlg.DoModal();
 }
 

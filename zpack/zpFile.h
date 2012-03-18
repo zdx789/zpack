@@ -13,7 +13,9 @@ class File : public IFile
 public:
 	File(Package* package, u64 offset, u32 size, u32 flag);
 
-	virtual u32 size();
+	virtual u32 size() const;
+
+	virtual u32 flag() const;
 
 	virtual void seek(u32 pos);
 

@@ -40,7 +40,7 @@ public:
 	void addFilesToPackage(std::vector<zp::String>& filenames);
 
 protected:
-	void startOperation(ProgressDialog::Operation op, size_t fileCount,
+	void startOperation(ProgressDialog::Operation op, zp::u64 totalFileSize,
 						const std::vector<std::pair<zp::String, zp::String>>* params);
 
 // Generated message map functions

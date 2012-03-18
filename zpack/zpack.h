@@ -41,8 +41,9 @@ const u32 PACK_NO_FILENAME = 2;
 
 const u32 FILE_DELETE = 1;
 const u32 FILE_COMPRESS = 2;
+const u32 FILE_BROKEN = 0x80000000;
 
-typedef bool (*Callback)(const Char* path, void* param);
+typedef bool (*Callback)(const Char* path, zp::u32 fileSize, void* param);
 
 class IFile;
 
@@ -64,14 +65,17 @@ public:
 
 	virtual u32 getFileCount() const = 0;
 	virtual bool getFileInfo(u32 index, Char* filenameBuffer, u32 filenameBufferSize,
-							u32* fileSize = 0, u32* originSize = 0, u32* flag = 0) const = 0;
+							u32* fileSize = 0, u32* packSize = 0, u32* flag = 0) const = 0;
 
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
 	//package manipulation fuctions, not available in read only mode
 
 	//do not add same file more than once between flush() call
-	virtual bool addFile(const Char* filename, const u8* buffer, u32 size, u32 flag) = 0;
+	//outFileSize	origin file size
+	//outPackSize	size in package
+	virtual bool addFile(const Char* filename, const Char* externalFilename, u32 fileSize, u32 flag,
+						u32* outPackSize = 0, u32* outFlag = 0) = 0;
 
 	//can not remove files added after last flush() call
 	virtual bool removeFile(const Char* filename) = 0;
@@ -93,7 +97,9 @@ protected:
 class IFile
 {
 public:
-	virtual u32 size() = 0;
+	virtual u32 size() const = 0;
+
+	virtual u32 flag() const = 0;
 
 	virtual void seek(u32 pos) = 0;
 

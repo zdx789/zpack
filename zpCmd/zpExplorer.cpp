@@ -14,10 +14,9 @@ using namespace std;
 ZpExplorer::ZpExplorer()
 	: m_pack(NULL)
 	, m_callback(NULL)
-	, m_fileCount(0)
+	//, m_fileCount(0)
+	, m_totalFileSize(0)
 	, m_callbackParam(NULL)
-	, m_readBuffer(NULL)
-	, m_readBufferSize(0)
 {
 	m_root.isDirectory = true;
 	m_root.parent = NULL;
@@ -30,12 +29,6 @@ ZpExplorer::~ZpExplorer()
 	if (m_pack != NULL)
 	{
 		zp::close(m_pack);
-	}
-	if (m_readBuffer != NULL)
-	{
-		delete[] m_readBuffer;
-		m_readBuffer = NULL;
-		m_readBufferSize = 0;
 	}
 }
 
@@ -182,8 +175,12 @@ bool ZpExplorer::add(const zp::String& srcPath, const zp::String& dstPath, bool 
 	if (findFile != INVALID_HANDLE_VALUE && (fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
 	{
 		//it's a file
+		if (fd.nFileSizeHigh != 0)
+		{
+			return false;
+		}
 		zp::String nudeFilename = srcPath.substr(pos + 1, srcPath.length() - pos - 1);
-		bool ret = addFile(srcPath, nudeFilename);
+		bool ret = addFile(srcPath, nudeFilename, fd.nFileSizeLow);
 		if (ret && flush)
 		{
 			m_pack->flush();
@@ -341,66 +338,35 @@ void ZpExplorer::clear()
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void ZpExplorer::build()
 {
-	unsigned long count = m_pack->getFileCount();
-	for (unsigned long i = 0; i < count; ++i)
+	zp::u32 count = m_pack->getFileCount();
+	for (zp::u32 i = 0; i < count; ++i)
 	{
 		zp::Char buffer[256];
-		zp::u32 fileSize;
-		m_pack->getFileInfo(i, buffer, sizeof(buffer)/sizeof(zp::Char), &fileSize);
+		zp::u32 fileSize, compressSize, flag;
+		m_pack->getFileInfo(i, buffer, sizeof(buffer)/sizeof(zp::Char), &fileSize, &compressSize, &flag);
 		zp::String filename = buffer;
-		insertFileToTree(filename, fileSize, false);
+		insertFileToTree(filename, fileSize, compressSize, flag, false);
 	}
 }
 
 //double g_readTime = 0;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-bool ZpExplorer::addFile(const zp::String& filename, const zp::String& relativePath)
+bool ZpExplorer::addFile(const zp::String& filename, const zp::String& relativePath, zp::u32 fileSize)
 {
-	if (m_callback != NULL && !m_callback(relativePath.c_str(), m_callbackParam))
-	{
-		return false;
-	}
-
-	//__int64 perfBefore, perfAfter, perfFreq;
-	//::QueryPerformanceFrequency((LARGE_INTEGER*)&perfFreq);
-	//::QueryPerformanceCounter((LARGE_INTEGER*)&perfBefore);
-
-	zp::u32 fileSize = 0;
-	fstream stream;
-	locale loc = locale::global(locale(""));
-	stream.open(filename.c_str(), ios_base::in | ios_base::binary);
-	locale::global(loc);
-	if (!stream.is_open())
-	{
-		return false;
-	}
-	stream.seekg(0, ios::end);
-	fileSize = static_cast<zp::u32>(stream.tellg());
-
-	if (fileSize > m_readBufferSize)
-	{
-		if (m_readBuffer != NULL)
-		{
-			delete[] m_readBuffer;
-		}
-		m_readBufferSize = fileSize;
-		m_readBuffer = new zp::u8[m_readBufferSize];
-	}
-	stream.seekg(0, ios::beg);
-	stream.read((char*)m_readBuffer, fileSize);
-	stream.close();
-
-	//::QueryPerformanceCounter((LARGE_INTEGER*)&perfAfter);
-	//double perfTime = 1000.0 * (perfAfter - perfBefore) / perfFreq;
-	//g_readTime += perfTime;
-
 	zp::String internalName = m_workingPath + relativePath;
-	if (!m_pack->addFile(internalName.c_str(), m_readBuffer, fileSize, zp::FILE_COMPRESS))
+	zp::u32 compressSize = 0;
+	zp::u32 flag = 0;
+	if (!m_pack->addFile(internalName.c_str(), filename.c_str(), fileSize, zp::FILE_COMPRESS, &compressSize, &flag))
 	{
 		return false;
 	}
-	insertFileToTree(internalName, fileSize, true);
+	insertFileToTree(internalName, fileSize, compressSize, flag, true);
+	
+	if (m_callback != NULL && !m_callback(relativePath.c_str(), fileSize, m_callbackParam))
+	{
+		return false;
+	}
 	return true;
 }
 
@@ -435,7 +401,7 @@ void ZpExplorer::countChildRecursively(const ZpNode* node)
 {
 	if (!node->isDirectory)
 	{
-		++m_fileCount;
+		m_totalFileSize += node->fileSize;
 	}
 	for (list<ZpNode>::const_iterator iter = node->children.begin();
 		iter != node->children.end();
@@ -455,6 +421,7 @@ bool ZpExplorer::removeChild(ZpNode* node, ZpNode* child)
 	{
 		if (child == &(*iter))
 		{
+			minusAncesterSize(child);
 			node->children.erase(iter);
 			return true;
 		}
@@ -468,7 +435,7 @@ bool ZpExplorer::removeChildRecursively(ZpNode* node, zp::String path)
 	assert(node != NULL && m_pack != NULL);
 	if (!node->isDirectory)
 	{
-		if (m_callback != NULL && !m_callback(node->name.c_str(), m_callbackParam))
+		if (m_callback != NULL && !m_callback(node->name.c_str(), (zp::u32)node->fileSize, m_callbackParam))
 		{
 			return false;
 		}
@@ -496,6 +463,7 @@ bool ZpExplorer::removeChildRecursively(ZpNode* node, zp::String path)
 			m_currentNode = m_currentNode->parent;
 			assert(m_currentNode != NULL);
 		}
+		minusAncesterSize(child);
 		iter = node->children.erase(iter);
 	}
 	return true;
@@ -508,7 +476,7 @@ bool ZpExplorer::extractRecursively(ZpNode* node, zp::String externalPath, zp::S
 	externalPath += node->name;
 	if (!node->isDirectory)
 	{
-		if (m_callback != NULL && !m_callback(internalPath.c_str(), m_callbackParam))
+		if (m_callback != NULL && !m_callback(internalPath.c_str(), (zp::u32)node->fileSize, m_callbackParam))
 		{
 			return false;
 		}
@@ -551,7 +519,8 @@ bool ZpExplorer::extractRecursively(ZpNode* node, zp::String externalPath, zp::S
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-void ZpExplorer::insertFileToTree(const zp::String& filename, unsigned long fileSize, bool checkFileExist)
+void ZpExplorer::insertFileToTree(const zp::String& filename, zp::u32 fileSize, zp::u32 compressSize,
+									zp::u32 flag, bool checkFileExist)
 {
 	ZpNode* node = &m_root;
 	zp::String filenameLeft = filename;
@@ -578,11 +547,16 @@ void ZpExplorer::insertFileToTree(const zp::String& filename, unsigned long file
 				newNode.lowerName = lowerName;
 			#endif
 				newNode.fileSize = fileSize;
+				newNode.compressSize = compressSize;
+				newNode.flag = flag;
 				node->children.push_back(newNode);
 			}
 			else
 			{
+				minusAncesterSize(child);
 				child->fileSize = fileSize;
+				child->compressSize = compressSize;
+				child->flag = flag;
 			}
 			return;
 		}
@@ -598,6 +572,8 @@ void ZpExplorer::insertFileToTree(const zp::String& filename, unsigned long file
 		if (child != NULL)
 		{
 			node = child;
+			node->fileSize += fileSize;
+			node->compressSize += compressSize;
 		}
 		else
 		{
@@ -608,7 +584,9 @@ void ZpExplorer::insertFileToTree(const zp::String& filename, unsigned long file
 		#if !(ZP_CASE_SENSITIVE)
 			newNode.lowerName = lowerName;
 		#endif
-			newNode.fileSize = 0;
+			newNode.fileSize = fileSize;
+			newNode.compressSize = compressSize;
+			newNode.flag = 0;
 			//insert after all directories
 			list<ZpNode>::iterator insertPoint;
 			for (insertPoint = node->children.begin(); insertPoint != node->children.end();	++insertPoint)
@@ -696,26 +674,42 @@ void ZpExplorer::getNodePath(const ZpNode* node, zp::String& path) const
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-unsigned long ZpExplorer::countDiskFile(const zp::String& path)
+zp::u64 ZpExplorer::countDiskFileSize(const zp::String& path)
 {
 	m_basePath = path;
 	if (m_basePath.c_str()[m_basePath.length() - 1] != DIR_CHAR)
 	{
 		m_basePath += DIR_STR;
 	}
-	m_fileCount = 0;
+	m_totalFileSize = 0;
 	enumFile(m_basePath, countFile, this);
-	if (m_fileCount == 0)
-	{
-		return 1;	//single file
-	}
-	return m_fileCount;
+	//if (m_totalFileSize == 0)
+	//{
+	//	return 1;	//single file
+	//}
+	return m_totalFileSize;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-unsigned long ZpExplorer::countNodeFile(const ZpNode* node)
+zp::u64 ZpExplorer::countNodeFileSize(const ZpNode* node)
 {
-	m_fileCount = 0;
+	m_totalFileSize = 0;
 	countChildRecursively(node);
-	return m_fileCount;
+	return m_totalFileSize;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void ZpExplorer::minusAncesterSize(ZpNode* node)
+{
+	if (node->isDirectory)
+	{
+		return;
+	}
+	ZpNode* ancester = node->parent;
+	while (ancester != NULL)
+	{
+		ancester->fileSize -= node->fileSize;
+		ancester->compressSize -= node->compressSize;
+		ancester = ancester->parent;
+	}
 }
