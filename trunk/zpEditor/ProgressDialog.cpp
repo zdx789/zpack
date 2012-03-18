@@ -18,8 +18,8 @@ ProgressDialog::ProgressDialog(CWnd* pParent /*=NULL*/)
 	, m_filename(_T("Counting files..."))
 	, m_running(false)
 	, m_progress(0)
-	, m_fileCount(0)
-	, m_fileIndex(0)
+	, m_totalFileSize(0)
+	, m_doneFileSize(0)
 	, m_thread(NULL)
 {
 	::InitializeCriticalSection(&m_lock);
@@ -112,7 +112,7 @@ void ProgressDialog::OnTimer(UINT_PTR nIDEvent)
 	}
 }
 
-bool ZpCallback(const zp::Char* path, void* param)
+bool ZpCallback(const zp::Char* path, zp::u32 fileSize, void* param)
 {
 	ProgressDialog* dlg = (ProgressDialog*)param;
 	if (dlg == NULL)
@@ -121,12 +121,16 @@ bool ZpCallback(const zp::Char* path, void* param)
 	}
 	if (dlg->m_running)
 	{
-		if (dlg->m_fileCount != 0)
+		if (dlg->m_totalFileSize != 0)
 		{
-			dlg->setProgress(path, (float)dlg->m_fileIndex / dlg->m_fileCount);
+			dlg->setProgress(path, (float)dlg->m_doneFileSize / dlg->m_totalFileSize);
+		}
+		else
+		{
+			dlg->setProgress(path, 1.0f);
 		}
 	}
-	++dlg->m_fileIndex;
+	dlg->m_doneFileSize += fileSize;
 	return dlg->m_running;
 }
 

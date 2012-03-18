@@ -24,15 +24,17 @@ struct ZpNode
 #endif
 	std::list<ZpNode>	children;
 	ZpNode*				parent;
-	unsigned long		fileSize;
+	zp::u64				fileSize;
+	zp::u64				compressSize;
+	zp::u32				flag;
 	mutable void*		userData;
 	bool				isDirectory;
 };
 
 class ZpExplorer
 {
-	friend bool addPackFile(const zp::String& filename, void* param);
-	friend bool countFile(const zp::String& filename, void* param);
+	friend bool addPackFile(const zp::String& filename, zp::u32 fileSize, void* param);
+	friend bool countFile(const zp::String& filename, zp::u32 fileSize, void* param);
 
 public:
 	ZpExplorer();
@@ -72,15 +74,15 @@ public:
 	const zp::String& currentPath() const;
 	void getNodePath(const ZpNode* node, zp::String& path) const;
 
-	unsigned long countDiskFile(const zp::String& path);
-	unsigned long countNodeFile(const ZpNode* node);
+	zp::u64 countDiskFileSize(const zp::String& path);
+	zp::u64 countNodeFileSize(const ZpNode* node);
 
 private:
 	void clear();
 
 	void build();
 
-	bool addFile(const zp::String& externalPath, const zp::String& internalPath);
+	bool addFile(const zp::String& externalPath, const zp::String& internalPath, zp::u32 fileSize);
 	bool extractFile(const zp::String& externalPath, const zp::String& internalPath);
 
 	void countChildRecursively(const ZpNode* node);
@@ -90,7 +92,8 @@ private:
 
 	bool extractRecursively(ZpNode* node, zp::String externalPath, zp::String internalPath);
 
-	void insertFileToTree(const zp::String& filename, unsigned long fileSize, bool checkFileExist);
+	void insertFileToTree(const zp::String& filename, zp::u32 fileSize, zp::u32 compressSize,
+						zp::u32 flag, bool checkFileExist);
 
 	enum FindType
 	{
@@ -103,6 +106,8 @@ private:
 
 	zp::String getArchivedName(const zp::String& filename);
 
+	void minusAncesterSize(ZpNode* node);
+
 private:
 	zp::IPackage*	m_pack;
 	ZpNode			m_root;
@@ -112,9 +117,8 @@ private:
 	zp::String		m_basePath;		//base path of external path (of file system)
 	zp::Callback	m_callback;
 	void*			m_callbackParam;
-	unsigned long	m_fileCount;
-	zp::u8*			m_readBuffer;
-	zp::u32			m_readBufferSize;
+	//zp::u32			m_fileCount;
+	zp::u64			m_totalFileSize;
 };
 
 #endif

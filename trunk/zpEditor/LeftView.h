@@ -41,7 +41,7 @@ protected:
 	void OnSelectChanged(NMHDR *pNMHDR, LRESULT *pResult);
 
 	ZpNode* getSelectedNode();
-	void startOperation(ProgressDialog::Operation op, size_t fileCount,
+	void startOperation(ProgressDialog::Operation op, zp::u64 totalFileSize,
 					const std::vector<std::pair<zp::String, zp::String>>* operations);
 
 	void OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags);

@@ -90,6 +90,7 @@ void CzpEditorView::OnInitialUpdate()
 	//can it be any more stupid?
 	listCtrl.DeleteColumn(0);
 	listCtrl.DeleteColumn(0);
+	listCtrl.DeleteColumn(0);
 
 	LVCOLUMN lc;
 	lc.mask = LVCF_WIDTH | LVCF_FMT | LVCF_TEXT | LVCF_SUBITEM;
@@ -100,10 +101,17 @@ void CzpEditorView::OnInitialUpdate()
 	lc.iSubItem = 0;
 	listCtrl.InsertColumn(0, &lc);
 
-	lc.cx = 100;
+	lc.cx = 95;
+	lc.fmt = LVCFMT_RIGHT;
 	lc.pszText = _T("Size");
 	lc.iSubItem = 1;
 	listCtrl.InsertColumn(1, &lc);
+
+	lc.cx = 50;
+	lc.fmt = LVCFMT_RIGHT;
+	lc.pszText = _T("Pack");
+	lc.iSubItem = 2;
+	listCtrl.InsertColumn(2, &lc);
 	
 	m_initiallized = true;
 	CListView::OnInitialUpdate();
@@ -166,13 +174,33 @@ void CzpEditorView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 																sizeof(SHFILEINFO), SHGFI_USEFILEATTRIBUTES|SHGFI_SYSICONINDEX);
 			iconIndex = sfi.iIcon;
 		}
-		OStringStream sizeString;
-		if (!node.isDirectory)
+		OStringStream sizeSS, rateSS;
+		zp::String sizeString;
+		//if (!node.isDirectory)
 		{
-			sizeString << iter->fileSize;
+			//add commas
+			sizeSS << iter->fileSize;
+			sizeString = sizeSS.str();
+			int commaCount = (sizeString.length() - 1) / 3;
+			int offset = sizeString.length() % 3;
+			if (offset == 0)
+			{
+				offset = 3;
+			}
+			zp::String::iterator insertPos = sizeString.begin() + offset;
+			for (int i = 0; i < commaCount; ++i)
+			{
+				sizeString.insert(insertPos, _T(','));
+				insertPos += 4;
+			}
+			if ((node.isDirectory || (iter->flag & zp::FILE_COMPRESS) != 0) && iter->fileSize > 0)
+			{
+				rateSS << (int)(iter->compressSize * 100.0f / iter->fileSize + 0.5f) << _T("%");
+			}
 		}
 		listCtrl.InsertItem(index, nodeName.c_str(), iconIndex);
-		listCtrl.SetItemText(index, 1, sizeString.str().c_str());
+		listCtrl.SetItemText(index, 1, sizeString.c_str());
+		listCtrl.SetItemText(index, 2, rateSS.str().c_str());
 		listCtrl.SetItemData(index, (DWORD_PTR)&node);
 		++index;
 	}
@@ -298,11 +326,11 @@ void CzpEditorView::OnEditAddFolder()
 	}
 	CString path = folderDlg.GetPathName();
 	ZpExplorer& explorer = GetDocument()->GetZpExplorer();
-	size_t fileCount = explorer.countDiskFile(path.GetString());
+	zp::u64 totalFileSize = explorer.countDiskFileSize(path.GetString());
 
 	std::vector<std::pair<zp::String, zp::String>> params;
 	params.push_back(std::make_pair(path.GetString(), addToDir));
-	startOperation(ProgressDialog::OP_ADD, fileCount, &params);
+	startOperation(ProgressDialog::OP_ADD, totalFileSize, &params);
 	m_pDocument->UpdateAllViews(NULL);
 }
 
@@ -319,17 +347,17 @@ void CzpEditorView::OnEditAdd()
 	{
 		addToDir = node->name;
 	}
-	size_t fileCount = 0;
+	zp::u64 totalFileSize = 0;
 	std::vector<std::pair<zp::String, zp::String>> params;
 	ZpExplorer& explorer = GetDocument()->GetZpExplorer();
 	POSITION pos = dlg.GetStartPosition();
 	while (pos)
 	{
 		CString filename = dlg.GetNextPathName(pos);
-		fileCount += explorer.countDiskFile(filename.GetString());
+		totalFileSize += explorer.countDiskFileSize(filename.GetString());
 		params.push_back(std::make_pair(filename.GetString(), addToDir));
 	}
-	startOperation(ProgressDialog::OP_ADD, fileCount, &params);
+	startOperation(ProgressDialog::OP_ADD, totalFileSize, &params);
 	m_pDocument->UpdateAllViews(NULL);
 }
 
@@ -344,14 +372,14 @@ void CzpEditorView::OnEditExtract()
 
 	ZpExplorer& explorer = GetDocument()->GetZpExplorer();
 
-	size_t fileCount = 0;
+	zp::u64 totalFileSize = 0;
 	std::vector<std::pair<zp::String, zp::String>> params;
 	CListCtrl& listCtrl = GetListCtrl();
 	POSITION pos = listCtrl.GetFirstSelectedItemPosition();
 	if (pos == NULL)
 	{
 		//nothing selected, extract current folder
-		fileCount += explorer.countNodeFile(explorer.currentNode());
+		totalFileSize += explorer.countNodeFileSize(explorer.currentNode());
 		params.push_back(std::make_pair(_T("."), destPath));
 	}
 	else
@@ -364,11 +392,11 @@ void CzpEditorView::OnEditExtract()
 			{
 				continue;
 			}
-			fileCount += explorer.countNodeFile(node);
+			totalFileSize += explorer.countNodeFileSize(node);
 			params.push_back(std::make_pair(node->name, destPath));
 		}
 	}
-	startOperation(ProgressDialog::OP_EXTRACT, fileCount, &params);
+	startOperation(ProgressDialog::OP_EXTRACT, totalFileSize, &params);
 }
 
 ZpNode* CzpEditorView::getSelectedNode()
@@ -383,7 +411,7 @@ ZpNode* CzpEditorView::getSelectedNode()
 	return NULL;
 }
 
-void CzpEditorView::startOperation(ProgressDialog::Operation op, size_t fileCount,
+void CzpEditorView::startOperation(ProgressDialog::Operation op, zp::u64 totalFileSize,
 							const std::vector<std::pair<zp::String, zp::String>>* params)
 {
 	ProgressDialog progressDlg;
@@ -391,7 +419,7 @@ void CzpEditorView::startOperation(ProgressDialog::Operation op, size_t fileCoun
 	progressDlg.m_running = true;
 	progressDlg.m_params = params;
 	progressDlg.m_operation = op;
-	progressDlg.m_fileCount = fileCount;
+	progressDlg.m_totalFileSize = totalFileSize;
 	progressDlg.DoModal();
 }
 
@@ -463,14 +491,14 @@ void CzpEditorView::OnEditExtractCur()
 {
 	ZpExplorer& explorer = GetDocument()->GetZpExplorer();
 
-	size_t fileCount = 0;
+	zp::u64 totalFileSize= 0;
 	std::vector<std::pair<zp::String, zp::String>> params;
 	CListCtrl& listCtrl = GetListCtrl();
 	POSITION pos = listCtrl.GetFirstSelectedItemPosition();
 	if (pos == NULL)
 	{
 		//nothing selected, extract current folder
-		fileCount += explorer.countNodeFile(explorer.currentNode());
+		totalFileSize += explorer.countNodeFileSize(explorer.currentNode());
 		params.push_back(std::make_pair(_T("."), _T("")));
 	}
 	else
@@ -483,9 +511,9 @@ void CzpEditorView::OnEditExtractCur()
 			{
 				continue;
 			}
-			fileCount += explorer.countNodeFile(node);
+			totalFileSize += explorer.countNodeFileSize(node);
 			params.push_back(std::make_pair(node->name, _T("")));
 		}
 	}
-	startOperation(ProgressDialog::OP_EXTRACT, fileCount, &params);
+	startOperation(ProgressDialog::OP_EXTRACT, totalFileSize, &params);
 }

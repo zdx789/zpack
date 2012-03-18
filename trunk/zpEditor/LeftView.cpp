@@ -195,17 +195,17 @@ void CLeftView::OnEditAdd()
 	{
 		return;
 	}
-	size_t fileCount = 0;
+	zp::u64 totalFileSize = 0;
 	std::vector<std::pair<zp::String, zp::String>> params;
 	ZpExplorer& explorer = GetDocument()->GetZpExplorer();
 	POSITION pos = dlg.GetStartPosition();
 	while (pos)
 	{
 		CString filename = dlg.GetNextPathName(pos);
-		fileCount += explorer.countDiskFile(filename.GetString());
+		totalFileSize += explorer.countDiskFileSize(filename.GetString());
 		params.push_back(std::make_pair(filename.GetString(), _T("")));
 	}
-	startOperation(ProgressDialog::OP_ADD, fileCount, &params);
+	startOperation(ProgressDialog::OP_ADD, totalFileSize, &params);
 	m_pDocument->UpdateAllViews(NULL);
 }
 
@@ -218,11 +218,11 @@ void CLeftView::OnEditAddFolder()
 	}
 	CString path = folderDlg.GetPathName();
 	ZpExplorer& explorer = GetDocument()->GetZpExplorer();
-	size_t fileCount = explorer.countDiskFile(path.GetString());
+	zp::u64 totalFileSize = explorer.countDiskFileSize(path.GetString());
 
 	std::vector<std::pair<zp::String, zp::String>> params;
 	params.push_back(std::make_pair(path.GetString(), _T("")));
-	startOperation(ProgressDialog::OP_ADD, fileCount, &params);
+	startOperation(ProgressDialog::OP_ADD, totalFileSize, &params);
 	m_pDocument->UpdateAllViews(NULL);
 }
 
@@ -258,10 +258,10 @@ void CLeftView::OnEditExtract()
 
 	ZpExplorer& explorer = GetDocument()->GetZpExplorer();
 
-	size_t fileCount = explorer.countNodeFile(explorer.currentNode());
+	zp::u64 totalFileSize = explorer.countNodeFileSize(explorer.currentNode());
 	std::vector<std::pair<zp::String, zp::String>> params;
 	params.push_back(std::make_pair(_T("."), destPath));
-	startOperation(ProgressDialog::OP_EXTRACT, fileCount, &params);
+	startOperation(ProgressDialog::OP_EXTRACT, totalFileSize, &params);
 }
 
 void CLeftView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
@@ -273,7 +273,7 @@ void CLeftView::OnKeyDown(UINT nChar, UINT nRepCnt, UINT nFlags)
 	CTreeView::OnKeyDown(nChar, nRepCnt, nFlags);
 }
 
-void CLeftView::startOperation(ProgressDialog::Operation op, size_t fileCount,
+void CLeftView::startOperation(ProgressDialog::Operation op, zp::u64 totalFileSize,
 							const std::vector<std::pair<zp::String, zp::String>>* params)
 {
 	ProgressDialog progressDlg;
@@ -281,7 +281,7 @@ void CLeftView::startOperation(ProgressDialog::Operation op, size_t fileCount,
 	progressDlg.m_running = true;
 	progressDlg.m_params = params;
 	progressDlg.m_operation = op;
-	progressDlg.m_fileCount = fileCount;
+	progressDlg.m_totalFileSize = totalFileSize;
 	progressDlg.DoModal();
 }
 

@@ -29,9 +29,12 @@ bool enumFile(const zp::String& searchPath, EnumCallback callback, void* param)
 		if ((fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
 		{
 			//file
-			if (!callback(searchPath + fd.cFileName, param))
+			if (fd.nFileSizeHigh == 0)	//4g top
 			{
-				return false;
+				if (!callback(searchPath + fd.cFileName, fd.nFileSizeLow, param))
+				{
+					return false;
+				}
 			}
 		}
 		else if (Strcmp(fd.cFileName, _T(".")) != 0 && Strcmp(fd.cFileName, _T("..")) != 0)
@@ -52,16 +55,17 @@ bool enumFile(const zp::String& searchPath, EnumCallback callback, void* param)
 	return true;
 }
 
-bool addPackFile(const zp::String& filename, void* param)
+bool addPackFile(const zp::String& filename, zp::u32 fileSize, void* param)
 {
 	ZpExplorer* explorer = reinterpret_cast<ZpExplorer*>(param);
 	zp::String relativePath = filename.substr(explorer->m_basePath.length(), filename.length() - explorer->m_basePath.length());
-	return explorer->addFile(filename, relativePath);
+	return explorer->addFile(filename, relativePath, fileSize);
 }
 
-bool countFile(const zp::String& filename, void* param)
+bool countFile(const zp::String& filename, zp::u32 fileSize, void* param)
 {
 	ZpExplorer* explorer = reinterpret_cast<ZpExplorer*>(param);
-	++explorer->m_fileCount;
+	//++explorer->m_fileCount;
+	explorer->m_totalFileSize += fileSize;
 	return true;
 }

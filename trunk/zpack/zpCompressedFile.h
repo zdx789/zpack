@@ -15,13 +15,17 @@ public:
 	virtual ~CompressedFile();
 
 	//from IFiled
-	virtual u32 size();
+	virtual u32 size() const;
+
+	virtual u32 flag() const;
 
 	virtual void seek(u32 pos);
 
 	virtual u32 read(u8* buffer, u32 size);
 
 private:
+	bool checkChunkPos() const;
+
 	void seekInPackage(u32 offset);
 
 	u32 oneChunkRead(u8* buffer, u32 size);

@@ -43,7 +43,7 @@ struct FileEntry
 {
 	u64	byteOffset;
 	u64	nameHash;
-	u32	fileSize;
+	u32	packSize;	//size in package
 	u32 originSize;
 	u32 flag;
 };
@@ -70,9 +70,10 @@ public:
 
 	virtual u32 getFileCount() const;
 	virtual bool getFileInfo(u32 index, Char* filenameBuffer, u32 filenameBufferSize,
-							u32* fileSize = 0, u32* originSize = 0, u32* flag = 0) const;
+							u32* fileSize = 0, u32* packSize = 0, u32* flag = 0) const;
 
-	virtual bool addFile(const Char* filename, const u8* buffer, u32 size, u32 flag);
+	virtual bool addFile(const Char* filename, const Char* exterFilename, u32 fileSize, u32 flag,
+						u32* outPackSize = 0, u32* outFlag = 0);
 	virtual bool removeFile(const Char* filename);
 	virtual bool dirty() const;
 	virtual void flush();
@@ -94,8 +95,9 @@ private:
 	void fixHashTable(u32 index);
 
 	u32 countFilenameSize() const;
-
-	void writeFileContent(FileEntry& entry, const u8* srcBuffer);
+	
+	void writeRawFile(FileEntry& entry, FILE* file);
+	void writeCompressFile(FileEntry& entry, FILE* file);
 
 private:
 	String					m_packageFilename;
@@ -106,6 +108,7 @@ private:
 	std::vector<String>		m_filenames;
 	u64						m_packageEnd;
 	u32						m_hashMask;
+	std::vector<u8>			m_chunkData;
 	std::vector<u8>			m_compressBuffer;
 	std::vector<u32>		m_chunkPosBuffer;
 	IFile*					m_lastSeekFile;

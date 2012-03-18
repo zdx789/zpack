@@ -41,6 +41,10 @@ CompressedFile::CompressedFile(Package* package, u64 offset, u32 compressedSize,
 	m_chunkPos = new u32[m_chunkCount];
 	seekInPackage(0);
 	fread((char*)m_chunkPos, m_chunkCount * sizeof(u32), 1, m_package->m_stream);
+	if (!checkChunkPos())
+	{
+		m_flag |= FILE_BROKEN;
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -71,9 +75,15 @@ CompressedFile::~CompressedFile()
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-u32 CompressedFile::size()
+u32 CompressedFile::size() const
 {
 	return m_originSize;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+u32 CompressedFile::flag() const
+{
+	return m_flag;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -130,6 +140,29 @@ u32 CompressedFile::read(u8* buffer, u32 size)
 	//END_PERF
 
 	return size;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+bool CompressedFile::checkChunkPos() const
+{
+	assert(m_chunkCount > 1);
+	
+	if (m_chunkPos[0] != sizeof(m_chunkPos[0]) * m_chunkCount)
+	{
+		return false;
+	}
+	for (u32 i = 1; i < m_chunkCount; ++i)
+	{
+		if (m_chunkPos[i] <= m_chunkPos[i - 1])
+		{
+			return false;
+		}
+		if (m_chunkPos[i] >= m_compressedSize)
+		{
+			return false;
+		}
+	}
+	return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

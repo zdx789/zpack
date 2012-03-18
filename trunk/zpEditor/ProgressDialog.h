@@ -36,8 +36,8 @@ public:
 
 	CRITICAL_SECTION	m_lock;
 	zp::String			m_currentFilename;
-	size_t				m_fileCount;
-	size_t				m_fileIndex;
+	zp::u64				m_totalFileSize;
+	zp::u64				m_doneFileSize;
 	int					m_progress;
 
 	CString m_filename;
