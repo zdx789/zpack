@@ -345,6 +345,13 @@ void ZpExplorer::build()
 		zp::u32 fileSize, compressSize, flag;
 		m_pack->getFileInfo(i, buffer, sizeof(buffer)/sizeof(zp::Char), &fileSize, &compressSize, &flag);
 		zp::String filename = buffer;
+		for (zp::u32 i = 0; i < filename.length(); ++i)
+		{
+			if (filename[i] == _T('/'))
+			{
+				filename[i] = DIR_CHAR;
+			}
+		}
 		insertFileToTree(filename, fileSize, compressSize, flag, false);
 	}
 }
@@ -374,7 +381,7 @@ bool ZpExplorer::addFile(const zp::String& filename, const zp::String& relativeP
 bool ZpExplorer::extractFile(const zp::String& externalPath, const zp::String& internalPath)
 {
 	assert(m_pack != NULL);
-	zp::IFile* file = m_pack->openFile(internalPath.c_str());
+	zp::IReadFile* file = m_pack->openFile(internalPath.c_str());
 	if (file == NULL)
 	{
 		return false;

@@ -43,7 +43,8 @@ CompressedFile::CompressedFile(Package* package, u64 offset, u32 compressedSize,
 	fread((char*)m_chunkPos, m_chunkCount * sizeof(u32), 1, m_package->m_stream);
 	if (!checkChunkPos())
 	{
-		m_flag |= FILE_BROKEN;
+		//let package delete me
+		m_flag |= FILE_DELETE;
 	}
 }
 
@@ -72,10 +73,20 @@ CompressedFile::~CompressedFile()
 		delete[] m_fileData;
 		m_fileData = NULL;
 	}
+	if (m_package->m_lastSeekFile == this)
+	{
+		m_package->m_lastSeekFile = NULL;
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 u32 CompressedFile::size() const
+{
+	return m_originSize;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+u32 CompressedFile::availableSize() const
 {
 	return m_originSize;
 }
