@@ -187,11 +187,11 @@ void CzpEditorView::OnUpdate(CView* pSender, LPARAM lHint, CObject* pHint)
 			{
 				offset = 3;
 			}
-			zp::String::iterator insertPos = sizeString.begin() + offset;
 			for (int i = 0; i < commaCount; ++i)
 			{
+				zp::String::iterator insertPos = sizeString.begin() + offset;
 				sizeString.insert(insertPos, _T(','));
-				insertPos += 4;
+				offset += 4;
 			}
 			if ((node.isDirectory || (iter->flag & zp::FILE_COMPRESS) != 0) && iter->fileSize > 0)
 			{

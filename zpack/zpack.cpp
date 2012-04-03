@@ -49,7 +49,11 @@ IPackage* create(const Char* filename, u32 chunkSize)
 	header.filenameOffset = sizeof(PackageHeader);
 	header.filenameSize = 0;
 	header.chunkSize = chunkSize;
+#ifdef ZP_USE_WCHAR
+	header.flag = PACK_UNICODE;
+#else
 	header.flag = 0;
+#endif
 	header.reserved = 0;
 
 	stream.write((char*)&header, sizeof(header));

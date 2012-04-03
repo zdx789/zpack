@@ -8,7 +8,7 @@ namespace zp
 
 class Package;
 
-class CompressedFile : public IFile
+class CompressedFile : public IReadFile
 {
 public:
 	CompressedFile(Package* package, u64 offset, u32 compressedSize, u32 originSize, u32 flag);
@@ -16,6 +16,8 @@ public:
 
 	//from IFiled
 	virtual u32 size() const;
+
+	virtual u32 availableSize() const;
 
 	virtual u32 flag() const;
 

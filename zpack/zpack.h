@@ -22,6 +22,7 @@ namespace zp
 	#endif
 	typedef std::wstring String;
 	#define Fopen _wfopen
+	#define Strcpy wcscpy_s
 #else
 	typedef char Char;
 	#ifndef _T
@@ -29,6 +30,7 @@ namespace zp
 	#endif
 	typedef std::string String;
 	#define Fopen fopen
+	#define Strcpy strcpy_s
 #endif
 
 typedef unsigned char u8;
@@ -38,14 +40,16 @@ typedef unsigned long long u64;
 
 const u32 PACK_READONLY = 1;
 const u32 PACK_NO_FILENAME = 2;
+const u32 PACK_UNICODE = 4;
 
 const u32 FILE_DELETE = 1;
 const u32 FILE_COMPRESS = 2;
-const u32 FILE_BROKEN = 0x80000000;
+const u32 FILE_WRITING = 4;
 
 typedef bool (*Callback)(const Char* path, zp::u32 fileSize, void* param);
 
-class IFile;
+class IReadFile;
+class IWriteFile;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 class IPackage
@@ -60,8 +64,8 @@ public:
 	//IFile will become unavailable after package is modified
 
 	virtual bool hasFile(const Char* filename) const = 0;
-	virtual IFile* openFile(const Char* filename) = 0;
-	virtual void closeFile(IFile* file) = 0;
+	virtual IReadFile* openFile(const Char* filename) = 0;
+	virtual void closeFile(IReadFile* file) = 0;
 
 	virtual u32 getFileCount() const = 0;
 	virtual bool getFileInfo(u32 index, Char* filenameBuffer, u32 filenameBufferSize,
@@ -76,6 +80,9 @@ public:
 	//outPackSize	size in package
 	virtual bool addFile(const Char* filename, const Char* externalFilename, u32 fileSize, u32 flag,
 						u32* outPackSize = 0, u32* outFlag = 0) = 0;
+
+	virtual IWriteFile* createFile(const Char* filename, u32 fileSize, u32 packSize, u32 flag) = 0;
+	virtual void closeFile(IWriteFile* file) = 0;
 
 	//can not remove files added after last flush() call
 	virtual bool removeFile(const Char* filename) = 0;
@@ -94,10 +101,12 @@ protected:
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-class IFile
+class IReadFile
 {
 public:
 	virtual u32 size() const = 0;
+
+	virtual u32 availableSize() const = 0;
 
 	virtual u32 flag() const = 0;
 
@@ -106,7 +115,19 @@ public:
 	virtual u32 read(u8* buffer, u32 size) = 0;
 
 protected:
-	virtual ~IFile(){}
+	virtual ~IReadFile(){}
+};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+class IWriteFile
+{
+public:
+	virtual u32 flag() const = 0;
+
+	virtual u32 write(const u8* buffer, u32 size) = 0;
+
+protected:
+	virtual ~IWriteFile(){}
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

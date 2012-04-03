@@ -8,12 +8,15 @@ namespace zp
 
 class Package;
 
-class File : public IFile
+class File : public IReadFile
 {
 public:
-	File(Package* package, u64 offset, u32 size, u32 flag);
+	File(Package* package, u64 offset, u32 size, u32 flag, u64 nameHash);
+	~File();
 
 	virtual u32 size() const;
+
+	virtual u32 availableSize() const;
 
 	virtual u32 flag() const;
 
@@ -29,6 +32,7 @@ private:
 	u64			m_offset;
 	u32			m_flag;
 	u32			m_size;
+	u64			m_nameHash;
 	u32			m_readPos;
 };
 
