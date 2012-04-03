@@ -90,6 +90,9 @@ private:
 
 	void removeDeletedEntries();
 
+	void writeFileEntries(bool avoidOverwrite);
+	void writeFilenames();
+
 	bool buildHashTable();
 	int getFileIndex(const Char* filename) const;
 	int getFileIndex(u64 nameHash) const;
@@ -122,7 +125,7 @@ private:
 	std::vector<u8>			m_chunkData;
 	std::vector<u8>			m_compressBuffer;
 	std::vector<u32>		m_chunkPosBuffer;
-	void*					m_lastSeekFile;
+	mutable void*			m_lastSeekFile;
 	bool					m_readonly;
 	bool					m_readFilename;
 	bool					m_dirty;

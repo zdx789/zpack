@@ -8,7 +8,7 @@ namespace zp
 {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-CompressedFile::CompressedFile(Package* package, u64 offset, u32 compressedSize, u32 originSize, u32 flag)
+CompressedFile::CompressedFile(const Package* package, u64 offset, u32 compressedSize, u32 originSize, u32 flag)
 	: m_package(package)
 	, m_offset(offset)
 	, m_flag(flag)

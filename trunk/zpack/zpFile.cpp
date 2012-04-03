@@ -6,7 +6,7 @@ namespace zp
 {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-File::File(Package* package, u64 offset, u32 size, u32 flag, u64 nameHash)
+File::File(const Package* package, u64 offset, u32 size, u32 flag, u64 nameHash)
 	: m_package(package)
 	, m_offset(offset)
 	, m_flag(flag)

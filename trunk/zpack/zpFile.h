@@ -11,7 +11,7 @@ class Package;
 class File : public IReadFile
 {
 public:
-	File(Package* package, u64 offset, u32 size, u32 flag, u64 nameHash);
+	File(const Package* package, u64 offset, u32 size, u32 flag, u64 nameHash);
 	~File();
 
 	virtual u32 size() const;
@@ -28,12 +28,12 @@ private:
 	void seekInPackage();
 
 private:
-	Package*	m_package;
-	u64			m_offset;
-	u32			m_flag;
-	u32			m_size;
-	u64			m_nameHash;
-	u32			m_readPos;
+	const Package*	m_package;
+	u64				m_offset;
+	u32				m_flag;
+	u32				m_size;
+	u64				m_nameHash;
+	u32				m_readPos;
 };
 
 }
