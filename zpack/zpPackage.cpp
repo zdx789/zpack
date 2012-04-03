@@ -333,62 +333,19 @@ void Package::flush()
 	{
 		return;
 	}
-
 	m_lastSeekFile = NULL;
 
-	if (m_fileEntries.empty())
-	{
-		m_header.fileEntryOffset = sizeof(m_header);
-	}
-	else
-	{
-		FileEntry& last =  m_fileEntries.back();
-		u64 lastFileEnd = last.byteOffset + last.packSize;
-		//avoid overwriting old file entries and filenames
-		u32 filenameSize = countFilenameSize();
-		if ((lastFileEnd >= m_header.filenameOffset + m_header.filenameSize) ||
-			(lastFileEnd + m_fileEntries.size() * sizeof(FileEntry) + filenameSize <= m_header.fileEntryOffset))
-		{
-			m_header.fileEntryOffset = lastFileEnd;
-		}
-		else
-		{
-			m_header.fileEntryOffset = m_header.filenameOffset + m_header.filenameSize;
-		}
-	}
-	_fseeki64(m_stream, m_header.fileEntryOffset, SEEK_SET);
-	for (u32 i = 0; i < m_fileEntries.size(); ++i)
-	{
-		FileEntry& entry = m_fileEntries[i];
-		fwrite(&entry, sizeof(FileEntry), 1, m_stream);
-	}
+	writeFileEntries(true);
+	writeFilenames();
 	
-	m_header.fileCount = (u32)m_fileEntries.size();
-	m_header.filenameOffset = m_header.fileEntryOffset + m_header.fileCount * sizeof(FileEntry);
-	//filenames
-	m_header.filenameSize = 0;
-	for (u32 i = 0; i < m_filenames.size(); ++i)
-	{
-		const String& filename = m_filenames[i];
-		u32 len = 0;
-	#ifdef ZP_USE_WCHAR
-		char out[MAX_URL_LEN * 3 + 1];
-		len = utf16toutf8(filename.c_str(), filename.length(), out, MAX_URL_LEN * 3);
-		fwrite(out, len, 1, m_stream);
-	#else
-		len = filename.length();
-		fwrite(filename.c_str(), len, 1, m_stream);
-	#endif
-		fwrite("\n", sizeof(char), 1, m_stream);
-		m_header.filenameSize += (len + 1);
-	}
-	m_packageEnd = m_header.filenameOffset + m_header.filenameSize;
-	
+	//header
 	_fseeki64(m_stream, 0, SEEK_SET);
 	fwrite(&m_header, sizeof(m_header), 1, m_stream);
+
 	fflush(m_stream);
 
 	buildHashTable();
+
 	m_dirty = false;
 }
 
@@ -399,6 +356,8 @@ u64 Package::countFragmentSize() const
 	{
 		return 0;
 	}
+	m_lastSeekFile = NULL;
+
 	u64 totalSize = m_header.headerSize + m_header.fileCount * m_header.fileEntrySize + m_header.filenameSize;
 	for (u32 i = 0; i < m_fileEntries.size(); ++i)
 	{
@@ -450,10 +409,6 @@ bool Package::defrag(Callback callback, void* callbackParam)
 			entry.byteOffset = nextPos;
 			continue;
 		}
-		//if ((entry.flag & FILE_DELETE) != 0)
-		//{
-		//	continue;
-		//}
 		if (entry.byteOffset != fragmentSize + nextPos	//new fragment encountered
 			|| currentChunkSize > MIN_CHUNK_SIZE)
 		{
@@ -486,8 +441,14 @@ bool Package::defrag(Callback callback, void* callbackParam)
 
 	m_stream = Fopen(tempFilename.c_str(), _T("r+b"));//ios_base::in | ios_base::out | ios_base::binary);	//only for flush()
 	assert(m_stream != NULL);
-	m_dirty = true;
-	flush();	//no need to rebuild hash table here, but it's ok b/c defrag will be slow anyway
+
+	//write file entries, filenames and header
+	writeFileEntries(false);
+	writeFilenames();
+	_fseeki64(m_stream, 0, SEEK_SET);
+	fwrite(&m_header, sizeof(m_header), 1, m_stream);
+	fflush(m_stream);
+
 	fclose(m_stream);
 
 	Remove(m_packageFilename.c_str());
@@ -501,8 +462,8 @@ bool Package::defrag(Callback callback, void* callbackParam)
 bool Package::readHeader()
 {
 	_fseeki64(m_stream, 0, SEEK_END);
-	m_packageEnd = _ftelli64(m_stream);
-	if (m_packageEnd < sizeof(PackageHeader))
+	u64 packageSize = _ftelli64(m_stream);
+	if (packageSize < sizeof(PackageHeader))
 	{
 		return false;
 	}
@@ -512,8 +473,8 @@ bool Package::readHeader()
 		|| m_header.headerSize < sizeof(PackageHeader)
 		|| m_header.fileEntrySize < sizeof(FileEntry)
 		|| m_header.fileEntryOffset < m_header.headerSize
-		|| m_header.fileCount * m_header.fileEntrySize + m_header.fileEntryOffset > m_packageEnd
-		|| m_header.filenameOffset + m_header.filenameSize > m_packageEnd
+		|| m_header.fileCount * m_header.fileEntrySize + m_header.fileEntryOffset > packageSize
+		|| m_header.filenameOffset + m_header.filenameSize > packageSize
 		|| m_header.chunkSize < MIN_CHUNK_SIZE)
 	{
 		return false;
@@ -522,6 +483,7 @@ bool Package::readHeader()
 	{
 		return false;
 	}
+	m_packageEnd = m_header.filenameOffset + m_header.filenameSize;
 	return true;
 }
 
@@ -614,6 +576,69 @@ void Package::removeDeletedEntries()
 		++iter;
 		++nameIter;
 	}
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+void Package::writeFileEntries(bool avoidOverwrite)
+{
+	if (m_fileEntries.empty())
+	{
+		m_header.fileEntryOffset = sizeof(m_header);
+	}
+	else
+	{
+		FileEntry& last =  m_fileEntries.back();
+		u64 lastFileEnd = last.byteOffset + last.packSize;
+		if (avoidOverwrite)
+		{
+			u32 filenameSize = countFilenameSize();
+			if ((lastFileEnd >= m_header.filenameOffset + m_header.filenameSize) ||
+				(lastFileEnd + m_fileEntries.size() * sizeof(FileEntry) + filenameSize <= m_header.fileEntryOffset))
+			{
+				m_header.fileEntryOffset = lastFileEnd;
+			}
+			else
+			{
+				m_header.fileEntryOffset = m_header.filenameOffset + m_header.filenameSize;
+			}
+		}
+		else
+		{
+			m_header.fileEntryOffset = lastFileEnd;
+		}
+	}
+
+	_fseeki64(m_stream, m_header.fileEntryOffset, SEEK_SET);
+	for (u32 i = 0; i < m_fileEntries.size(); ++i)
+	{
+		FileEntry& entry = m_fileEntries[i];
+		fwrite(&entry, sizeof(FileEntry), 1, m_stream);
+	}
+	m_header.fileCount = (u32)m_fileEntries.size();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+void Package::writeFilenames()
+{
+	m_header.filenameOffset = m_header.fileEntryOffset + m_header.fileCount * sizeof(FileEntry);
+
+	m_header.filenameSize = 0;
+	for (u32 i = 0; i < m_filenames.size(); ++i)
+	{
+		const String& filename = m_filenames[i];
+		u32 len = 0;
+	#ifdef ZP_USE_WCHAR
+		char out[MAX_URL_LEN * 3 + 1];
+		len = utf16toutf8(filename.c_str(), filename.length(), out, MAX_URL_LEN * 3);
+		fwrite(out, len, 1, m_stream);
+	#else
+		len = filename.length();
+		fwrite(filename.c_str(), len, 1, m_stream);
+	#endif
+		fwrite("\n", sizeof(char), 1, m_stream);
+		m_header.filenameSize += (len + 1);
+	}
+	m_packageEnd = m_header.filenameOffset + m_header.filenameSize;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -716,7 +741,7 @@ u32 Package::insertFileEntry(FileEntry& entry, const Char* filename)
 		lastEnd = thisEntry.byteOffset + thisEntry.packSize;
 	}
 
-	if (m_header.fileEntryOffset > lastEnd + entry.packSize)
+	if (m_fileEntries.empty() || m_header.fileEntryOffset > lastEnd + entry.packSize)
 	{
 		entry.byteOffset = lastEnd;
 	}
