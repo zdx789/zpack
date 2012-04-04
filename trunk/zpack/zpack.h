@@ -42,8 +42,6 @@ const u32 OPEN_READONLY = 1;
 const u32 OPEN_NO_FILENAME = 2;
 
 const u32 PACK_UNICODE = 1;
-const u32 PACK_COMPRESS_ENTRY = 2;
-const u32 PACK_COMPRESS_FILENAME = 4;
 
 const u32 FILE_DELETE = 1;
 const u32 FILE_COMPRESS = 2;
@@ -134,7 +132,7 @@ protected:
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-IPackage* create(const Char* filename, u32 chunkSize = 0x40000, u32 flag = PACK_COMPRESS_ENTRY | PACK_COMPRESS_FILENAME);
+IPackage* create(const Char* filename, u32 chunkSize = 0x40000);
 IPackage* open(const Char* filename, u32 flag = OPEN_READONLY | OPEN_NO_FILENAME);
 void close(IPackage* package);
 

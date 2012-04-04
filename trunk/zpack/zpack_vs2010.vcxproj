@@ -11,7 +11,6 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="UtfConvert.h" />
     <ClInclude Include="zpack.h" />
     <ClInclude Include="zpCompressedFile.h" />
     <ClInclude Include="zpFile.h" />
@@ -19,7 +18,6 @@
     <ClInclude Include="zpWriteFile.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="UtfConvert.cpp" />
     <ClCompile Include="zlib\adler32.c" />
     <ClCompile Include="zlib\compress.c" />
     <ClCompile Include="zlib\crc32.c" />

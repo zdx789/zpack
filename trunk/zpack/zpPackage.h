@@ -12,9 +12,11 @@ namespace zp
 #if defined (ZP_USE_WCHAR)
 	#define Remove _wremove
 	#define Rename _wrename
+	typedef std::wistringstream IStringStream;
 #else
 	#define Remove remove
 	#define Rename rename
+	typedef std::istringstream IStringStream;
 #endif
 
 const u32 PACKAGE_FILE_SIGN = 'KAPZ';
@@ -29,11 +31,12 @@ struct PackageHeader
 	u32	fileCount;
 	u64	fileEntryOffset;
 	u64 filenameOffset;
-	u32	fileEntrySize;	//size of single entry
-	u32 filenameSize;	//size of all filenames, in bytes
-	u32 chunkSize;		//compress unit
+	u32	fileEntrySize;		//size of all file entries, in bytes
+	u32 filenameSize;		//size of all filenames, in bytes
+	u32 originFilenameSize;	//filename size before compression
+	u32 chunkSize;			//file compress unit
 	u32	flag;
-	u32 reserved[32];
+	u32 reserved[19];
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -91,8 +94,7 @@ private:
 
 	void removeDeletedEntries();
 
-	void writeFileEntries(bool avoidOverwrite);
-	void writeFilenames();
+	void writeTables(bool avoidOverwrite);
 
 	bool buildHashTable();
 	int getFileIndex(const Char* filename) const;
@@ -103,8 +105,6 @@ private:
 	u64 stringHash(const Char* str, u32 seed) const;
 
 	void fixHashTable(u32 index);
-
-	u32 countFilenameSize() const;
 
 	void writeRawFile(FileEntry& entry, FILE* file);
 	void writeCompressFile(FileEntry& entry, FILE* file);

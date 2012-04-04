@@ -2,7 +2,6 @@
 #include "zpFile.h"
 #include "zpCompressedFile.h"
 #include "zpWriteFile.h"
-#include "UtfConvert.h"
 #include <cassert>
 #include <sstream>
 #include "zlib.h"
@@ -24,7 +23,7 @@ const u32 MIN_CHUNK_SIZE = 0x1000;
 
 const u32 HASH_SEED = 131;
 
-const int MAX_URL_LEN = 260;
+const int MAX_URL_LEN = 1024;
 
 using namespace std;
 
@@ -337,9 +336,8 @@ void Package::flush()
 	}
 	m_lastSeekFile = NULL;
 
-	writeFileEntries(true);
-	writeFilenames();
-	
+	writeTables(true);
+
 	//header
 	_fseeki64(m_stream, 0, SEEK_SET);
 	fwrite(&m_header, sizeof(m_header), 1, m_stream);
@@ -445,8 +443,7 @@ bool Package::defrag(Callback callback, void* callbackParam)
 	assert(m_stream != NULL);
 
 	//write file entries, filenames and header
-	writeFileEntries(false);
-	writeFilenames();
+	writeTables(false);
 	_fseeki64(m_stream, 0, SEEK_SET);
 	fwrite(&m_header, sizeof(m_header), 1, m_stream);
 	fflush(m_stream);
@@ -473,7 +470,6 @@ bool Package::readHeader()
 	fread(&m_header, sizeof(PackageHeader), 1, m_stream);
 	if (m_header.sign != PACKAGE_FILE_SIGN
 		|| m_header.headerSize != sizeof(PackageHeader)
-		|| m_header.fileEntrySize != sizeof(FileEntry) * m_header.fileCount
 		|| m_header.fileEntryOffset < m_header.headerSize
 		|| m_header.fileEntryOffset + m_header.fileEntrySize > packageSize
 		|| m_header.filenameOffset < m_header.fileEntryOffset + m_header.fileEntrySize
@@ -494,10 +490,26 @@ bool Package::readHeader()
 bool Package::readFileEntries()
 {
 	m_fileEntries.resize(m_header.fileCount);
-	if (m_header.fileCount > 0)
+	if (m_header.fileCount == 0)
 	{
-		_fseeki64(m_stream, m_header.fileEntryOffset, SEEK_SET);
+		return true;
+	}
+	_fseeki64(m_stream, m_header.fileEntryOffset, SEEK_SET);
+	if (m_header.fileEntrySize == m_header.fileCount * sizeof(FileEntry))
+	{
+		//not compressed
 		fread(&m_fileEntries[0], m_header.fileEntrySize, 1, m_stream);
+	}
+	else
+	{
+		std::vector<u8> srcBuffer(m_header.fileEntrySize);
+		fread(&srcBuffer[0], m_header.fileEntrySize, 1, m_stream);
+		u32 dstBufferSize = m_header.fileCount * sizeof(FileEntry);
+		int ret = uncompress((u8*)&m_fileEntries[0], &dstBufferSize, &srcBuffer[0], m_header.fileEntrySize);
+		if (ret != Z_OK || dstBufferSize != m_header.fileCount * sizeof(FileEntry))
+		{
+			return false;
+		}
 	}
 	return true;
 }
@@ -509,30 +521,40 @@ bool Package::readFilenames()
 	{
 		return true;
 	}
-	u32 charCount = m_header.filenameSize;
-	std::string names;
-	names.resize(charCount + 1);
-	//hack
-	char* buffer = const_cast<char*>(names.c_str());
-
-	m_filenames.resize(m_fileEntries.size());
+	if (m_header.filenameSize == 0)
+	{
+		return false;
+	}
 	_fseeki64(m_stream, m_header.filenameOffset, SEEK_SET);
-	fread(buffer, charCount * sizeof(char), 1, m_stream);
-	names[charCount] = 0;
-	std::istringstream iss(names, std::istringstream::in);
+	std::vector<u8> dstBuffer(m_header.originFilenameSize);
+	if (m_header.filenameSize == m_header.originFilenameSize)
+	{
+		//not compressed
+		fread(&dstBuffer[0], m_header.filenameSize, 1, m_stream);
+	}
+	else
+	{
+		std::vector<u8> tempBuffer(m_header.filenameSize);
+		fread(&tempBuffer[0], m_header.filenameSize, 1, m_stream);
+		u32 originSize = m_header.originFilenameSize;
+		int ret = uncompress(&dstBuffer[0], &originSize, &tempBuffer[0], m_header.filenameSize);
+		if (ret != Z_OK || originSize != m_header.originFilenameSize)
+		{
+			return false;
+		}
+	}
+	
+	String names;
+	names.assign((Char*)&dstBuffer[0], m_header.originFilenameSize / sizeof(Char));
+	
+	m_filenames.resize(m_fileEntries.size());
+	
+	IStringStream iss(names, IStringStream::in);
 	for (u32 i = 0; i < m_fileEntries.size(); ++i)
 	{
-		char out[MAX_URL_LEN * 3 + 1];
-		iss.getline(out, MAX_URL_LEN * 3);	//could be utf-8
-
-#ifdef ZP_USE_WCHAR
-		wchar_t wout[MAX_URL_LEN + 1];
-		size_t len = utf8toutf16(out, strlen(out), wout, MAX_URL_LEN);
-		wout[len] = 0;
-		m_filenames[i] = wout;
-#else
+		Char out[MAX_URL_LEN];
+		iss.getline(out, MAX_URL_LEN);
 		m_filenames[i] = out;
-#endif
 	}
 	return true;
 }
@@ -565,8 +587,37 @@ void Package::removeDeletedEntries()
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-void Package::writeFileEntries(bool avoidOverwrite)
+void Package::writeTables(bool avoidOverwrite)
 {
+	//compress file entries
+	u32 srcEntrySize = m_fileEntries.size() * sizeof(FileEntry);
+	u32 dstEntrySize = srcEntrySize;
+
+	std::vector<u8> dstEntryBuffer(dstEntrySize);
+	int ret = compress(&dstEntryBuffer[0], &dstEntrySize, (u8*)&m_fileEntries[0], srcEntrySize);
+	if (ret != Z_OK || dstEntrySize >= srcEntrySize)
+	{
+		dstEntrySize = srcEntrySize;
+	}
+
+	//compress filenames
+	String srcFilename;
+	for (u32 i = 0; i < m_filenames.size(); ++i)
+	{
+		srcFilename += m_filenames[i];
+		srcFilename += _T("\n");
+	}
+	u32 srcFilenameSize = srcFilename.length() * sizeof(Char);
+	u32 dstFilenameSize = srcFilenameSize;
+
+	std::vector<u8> dstFilenameBuffer(dstFilenameSize);
+	ret = compress(&dstFilenameBuffer[0], &dstFilenameSize, (const u8*)srcFilename.c_str(), srcFilenameSize);
+	if (ret != Z_OK || dstFilenameSize >= srcFilenameSize)
+	{
+		dstFilenameSize = srcFilenameSize;
+	}
+
+	//find pos to write
 	if (m_fileEntries.empty())
 	{
 		m_header.fileEntryOffset = sizeof(m_header);
@@ -577,9 +628,8 @@ void Package::writeFileEntries(bool avoidOverwrite)
 		u64 lastFileEnd = last.byteOffset + last.packSize;
 		if (avoidOverwrite)
 		{
-			u32 filenameSize = countFilenameSize();
 			if ((lastFileEnd >= m_header.filenameOffset + m_header.filenameSize) ||
-				(lastFileEnd + m_fileEntries.size() * sizeof(FileEntry) + filenameSize <= m_header.fileEntryOffset))
+				(lastFileEnd + dstEntrySize + dstFilenameSize <= m_header.fileEntryOffset))
 			{
 				m_header.fileEntryOffset = lastFileEnd;
 			}
@@ -595,37 +645,28 @@ void Package::writeFileEntries(bool avoidOverwrite)
 	}
 
 	_fseeki64(m_stream, m_header.fileEntryOffset, SEEK_SET);
-	for (u32 i = 0; i < m_fileEntries.size(); ++i)
+	if (dstEntrySize == srcEntrySize)
 	{
-		FileEntry& entry = m_fileEntries[i];
-		fwrite(&entry, sizeof(FileEntry), 1, m_stream);
+		fwrite(&m_fileEntries[0], srcEntrySize, 1, m_stream);
 	}
+	else
+	{
+		fwrite(&dstEntryBuffer[0], dstEntrySize, 1, m_stream);
+	}
+	if (dstFilenameSize == srcFilenameSize)
+	{
+		fwrite(&srcFilename[0], srcFilenameSize, 1, m_stream);
+	}
+	else
+	{
+		fwrite(&dstFilenameBuffer[0], dstFilenameSize, 1, m_stream);
+	}
+
 	m_header.fileCount = (u32)m_fileEntries.size();
-	m_header.fileEntrySize = m_header.fileCount * sizeof(FileEntry);
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-void Package::writeFilenames()
-{
-	m_header.filenameOffset = m_header.fileEntryOffset + m_header.fileCount * sizeof(FileEntry);
-
-	m_header.filenameSize = 0;
-	for (u32 i = 0; i < m_filenames.size(); ++i)
-	{
-		const String& filename = m_filenames[i];
-		u32 len = 0;
-	#ifdef ZP_USE_WCHAR
-		char out[MAX_URL_LEN * 3 + 1];
-		len = utf16toutf8(filename.c_str(), filename.length(), out, MAX_URL_LEN * 3);
-		fwrite(out, len, 1, m_stream);
-	#else
-		len = filename.length();
-		fwrite(filename.c_str(), len, 1, m_stream);
-	#endif
-		fwrite("\n", sizeof(char), 1, m_stream);
-		m_header.filenameSize += (len + 1);
-	}
-	m_packageEnd = m_header.filenameOffset + m_header.filenameSize;
+	m_header.fileEntrySize = dstEntrySize;
+	m_header.filenameOffset = m_header.fileEntryOffset + m_header.fileEntrySize;
+	m_header.filenameSize = dstFilenameSize;
+	m_header.originFilenameSize = srcFilenameSize;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -731,6 +772,10 @@ u32 Package::insertFileEntry(FileEntry& entry, const Char* filename)
 	if (m_fileEntries.empty() || m_header.fileEntryOffset > lastEnd + entry.packSize)
 	{
 		entry.byteOffset = lastEnd;
+		if (entry.byteOffset + entry.packSize > m_packageEnd)
+		{
+			m_packageEnd = entry.byteOffset + entry.packSize;
+		}
 	}
 	else
 	{
@@ -802,23 +847,6 @@ void Package::fixHashTable(u32 index)
 			++m_hashTable[i];
 		}
 	}
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-u32 Package::countFilenameSize() const
-{
-	u32 total = 0;
-	for (u32 i = 0; i < m_filenames.size(); ++i)
-	{
-		const String& filename = m_filenames[i];
-	#ifdef ZP_USE_WCHAR
-		//max length possible
-		total += ((u32)filename.length() * 3 + 1);
-	#else
-		total += (((u32)filename.length() + 1) * sizeof(Char));
-	#endif
-	}
-	return total;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
