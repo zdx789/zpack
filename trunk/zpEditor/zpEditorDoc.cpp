@@ -57,7 +57,7 @@ BOOL CzpEditorDoc::OnOpenDocument(LPCTSTR lpszPathName)
 	if (!m_explorer.open(lpszPathName, false)
 		&& !m_explorer.open(lpszPathName, true))
 	{
-		::MessageBox(NULL, _T("Invalid zpack file."), _T("Error"), MB_OK | MB_ICONERROR);
+		::MessageBox(NULL, _T("Invalid zpack file or version mismatch."), _T("Error"), MB_OK | MB_ICONERROR);
 		return FALSE;
 	}
 	size_t pos = filename.find_last_of(_T('\\'));

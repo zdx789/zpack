@@ -229,6 +229,7 @@ bool Package::addFile(const Char* filename, const Char* externalFilename, u32 fi
 	entry.packSize = fileSize;
 	entry.originSize = fileSize;
 	entry.flag = flag;
+	memset(entry.reserved, 0, sizeof(entry.reserved));
 
 	u32 insertedIndex = insertFileEntry(entry, filename);
 
@@ -289,6 +290,7 @@ IWriteFile* Package::createFile(const Char* filename, u32 fileSize, u32 packSize
 	entry.originSize = fileSize;
 	flag |= FILE_WRITING;
 	entry.flag = flag;
+	memset(entry.reserved, 0, sizeof(entry.reserved));
 
 	u32 insertedIndex = insertFileEntry(entry, filename);
 
@@ -358,7 +360,7 @@ u64 Package::countFragmentSize() const
 	}
 	m_lastSeekFile = NULL;
 
-	u64 totalSize = m_header.headerSize + m_header.fileCount * m_header.fileEntrySize + m_header.filenameSize;
+	u64 totalSize = m_header.headerSize + m_fileEntries.size() * sizeof(FileEntry) + m_header.filenameSize;
 	for (u32 i = 0; i < m_fileEntries.size(); ++i)
 	{
 		const FileEntry& entry = m_fileEntries[i];
@@ -470,16 +472,17 @@ bool Package::readHeader()
 	_fseeki64(m_stream, 0, SEEK_SET);
 	fread(&m_header, sizeof(PackageHeader), 1, m_stream);
 	if (m_header.sign != PACKAGE_FILE_SIGN
-		|| m_header.headerSize < sizeof(PackageHeader)
-		|| m_header.fileEntrySize < sizeof(FileEntry)
+		|| m_header.headerSize != sizeof(PackageHeader)
+		|| m_header.fileEntrySize != sizeof(FileEntry) * m_header.fileCount
 		|| m_header.fileEntryOffset < m_header.headerSize
-		|| m_header.fileCount * m_header.fileEntrySize + m_header.fileEntryOffset > packageSize
+		|| m_header.fileEntryOffset + m_header.fileEntrySize > packageSize
+		|| m_header.filenameOffset < m_header.fileEntryOffset + m_header.fileEntrySize
 		|| m_header.filenameOffset + m_header.filenameSize > packageSize
 		|| m_header.chunkSize < MIN_CHUNK_SIZE)
 	{
 		return false;
 	}
-	if (m_header.version != CURRENT_VERSION)
+	if (m_header.version != CURRENT_VERSION && !m_readonly)
 	{
 		return false;
 	}
@@ -491,27 +494,10 @@ bool Package::readHeader()
 bool Package::readFileEntries()
 {
 	m_fileEntries.resize(m_header.fileCount);
-	_fseeki64(m_stream, m_header.fileEntryOffset, SEEK_SET);
-	u32 extraDataSize = m_header.fileEntrySize - sizeof(FileEntry);
-
-	u64 nextOffset = m_header.headerSize;
-	for (u32 i = 0; i < m_header.fileCount; ++i)
+	if (m_header.fileCount > 0)
 	{
-		if (nextOffset > m_header.fileEntryOffset)
-		{
-			return false;
-		}
-		FileEntry& entry = m_fileEntries[i];
-		fread(&entry, sizeof(FileEntry), 1, m_stream);
-		if (entry.byteOffset < nextOffset)
-		{
-			return false;
-		}
-		nextOffset = entry.byteOffset + entry.packSize;
-		if (extraDataSize > 0)
-		{
-			_fseeki64(m_stream, extraDataSize, SEEK_CUR);
-		}
+		_fseeki64(m_stream, m_header.fileEntryOffset, SEEK_SET);
+		fread(&m_fileEntries[0], m_header.fileEntrySize, 1, m_stream);
 	}
 	return true;
 }
@@ -615,6 +601,7 @@ void Package::writeFileEntries(bool avoidOverwrite)
 		fwrite(&entry, sizeof(FileEntry), 1, m_stream);
 	}
 	m_header.fileCount = (u32)m_fileEntries.size();
+	m_header.fileEntrySize = m_header.fileCount * sizeof(FileEntry);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
