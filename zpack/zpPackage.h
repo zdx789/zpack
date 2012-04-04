@@ -18,7 +18,7 @@ namespace zp
 #endif
 
 const u32 PACKAGE_FILE_SIGN = 'KAPZ';
-const u32 CURRENT_VERSION = '0020';
+const u32 CURRENT_VERSION = '0030';
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 struct PackageHeader
@@ -33,7 +33,7 @@ struct PackageHeader
 	u32 filenameSize;	//size of all filenames, in bytes
 	u32 chunkSize;		//compress unit
 	u32	flag;
-	u32 reserved;
+	u32 reserved[32];
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -44,6 +44,7 @@ struct FileEntry
 	u32	packSize;	//size in package
 	u32 originSize;
 	u32 flag;
+	u32 reserved[3];
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

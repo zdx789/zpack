@@ -12,8 +12,8 @@ namespace zp
 IPackage* open(const Char* filename, u32 flag)
 {
 	Package* package = new Package(filename, 
-									(flag & PACK_READONLY) != 0,
-									(flag & PACK_NO_FILENAME) == 0);
+									(flag & OPEN_READONLY) != 0,
+									(flag & OPEN_NO_FILENAME) == 0);
 	if (!package->valid())
 	{
 		delete package;
@@ -29,7 +29,7 @@ void close(IPackage* package)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-IPackage* create(const Char* filename, u32 chunkSize)
+IPackage* create(const Char* filename, u32 chunkSize, u32 flag)
 {
 	fstream stream;
 	locale loc = locale::global(locale(""));
@@ -43,18 +43,18 @@ IPackage* create(const Char* filename, u32 chunkSize)
 	header.sign = PACKAGE_FILE_SIGN;
 	header.version = CURRENT_VERSION;
 	header.headerSize = sizeof(PackageHeader);
-	header.fileEntrySize = sizeof(FileEntry);
 	header.fileCount = 0;
 	header.fileEntryOffset = sizeof(PackageHeader);
 	header.filenameOffset = sizeof(PackageHeader);
+	header.fileEntrySize = 0;
 	header.filenameSize = 0;
 	header.chunkSize = chunkSize;
 #ifdef ZP_USE_WCHAR
-	header.flag = PACK_UNICODE;
+	header.flag = flag | PACK_UNICODE;
 #else
-	header.flag = 0;
+	header.flag = flag;
 #endif
-	header.reserved = 0;
+	memset(header.reserved, 0, sizeof(header.reserved));
 
 	stream.write((char*)&header, sizeof(header));
 	stream.close();
