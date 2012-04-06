@@ -47,7 +47,8 @@ struct FileEntry
 	u32	packSize;	//size in package
 	u32 originSize;
 	u32 flag;
-	u32 reserved[3];
+	u32 chunkSize;	//can be different with chunkSize in package header
+	u32 reserved[2];
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -77,7 +78,8 @@ public:
 
 	virtual bool addFile(const Char* filename, const Char* exterFilename, u32 fileSize, u32 flag,
 						u32* outPackSize = 0, u32* outFlag = 0);
-	virtual IWriteFile* createFile(const Char* filename, u32 fileSize, u32 packSize, u32 flag);
+	virtual IWriteFile* createFile(const Char* filename, u32 fileSize, u32 packSize,
+									u32 chunkSize = 0, u32 flag = 0);
 	virtual void closeFile(IWriteFile* file);
 
 	virtual bool removeFile(const Char* filename);

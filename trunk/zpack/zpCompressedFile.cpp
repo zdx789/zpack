@@ -8,9 +8,11 @@ namespace zp
 {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-CompressedFile::CompressedFile(const Package* package, u64 offset, u32 compressedSize, u32 originSize, u32 flag)
+CompressedFile::CompressedFile(const Package* package, u64 offset, u32 compressedSize, u32 originSize,
+								u32 chunkSize, u32 flag)
 	: m_package(package)
 	, m_offset(offset)
+	, m_chunkSize(chunkSize)
 	, m_flag(flag)
 	, m_compressedSize(compressedSize)
 	, m_originSize(originSize)
@@ -26,7 +28,8 @@ CompressedFile::CompressedFile(const Package* package, u64 offset, u32 compresse
 	{
 		m_originSize = 0;
 	}
-	m_chunkCount = (m_originSize + m_package->m_header.chunkSize - 1) / m_package->m_header.chunkSize;
+	assert(m_chunkSize != 0);
+	m_chunkCount = (m_originSize + m_chunkSize - 1) / m_chunkSize;
 	//no chunk size array for files have only 1 chunk
 	if (m_chunkCount <= 1)
 	{
@@ -88,7 +91,9 @@ u32 CompressedFile::size() const
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 u32 CompressedFile::availableSize() const
 {
-	return m_originSize;
+	//need calculation here
+	assert(false);
+	return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -123,21 +128,21 @@ u32 CompressedFile::read(u8* buffer, u32 size)
 	else
 	{
 		//let's do something real!
-		u32 startChunk = m_readPos / m_package->m_header.chunkSize;
-		u32 endChunk = (m_readPos + size + m_package->m_header.chunkSize - 1) / m_package->m_header.chunkSize;
+		u32 startChunk = m_readPos / m_chunkSize;
+		u32 endChunk = (m_readPos + size + m_chunkSize - 1) / m_chunkSize;
 		u32 dstOffset = 0;
 		for (u32 chunkIndex = startChunk; chunkIndex < endChunk; ++chunkIndex)
 		{
 			u32 readOffset = 0;
-			u32 readSize = m_package->m_header.chunkSize;
+			u32 readSize = m_chunkSize;
 			if (chunkIndex == startChunk)
 			{
-				readOffset = m_readPos % m_package->m_header.chunkSize;
+				readOffset = m_readPos % m_chunkSize;
 			}
 			if (chunkIndex == endChunk - 1)
 			{
 				//last chunk
-				readSize = (m_readPos + size) - chunkIndex * m_package->m_header.chunkSize;
+				readSize = (m_readPos + size) - chunkIndex * m_chunkSize;
 			}
 			if (!readChunk(chunkIndex, readOffset, readSize, buffer + dstOffset))
 			{
@@ -239,13 +244,13 @@ bool CompressedFile::readChunk(u32 chunkIndex, u32 offset, u32 readSize, u8* buf
 	if (chunkIndex + 1 < m_chunkCount)
 	{
 		compressedChunkSize = m_chunkPos[chunkIndex + 1] - m_chunkPos[chunkIndex];
-		originChunkSize = m_package->m_header.chunkSize;
+		originChunkSize = m_chunkSize;
 	}
 	else
 	{
 		//last chunk
 		compressedChunkSize = m_compressedSize - m_chunkPos[m_chunkCount - 1];
-		originChunkSize = m_originSize % m_package->m_header.chunkSize;
+		originChunkSize = m_originSize % m_chunkSize;
 	}
 
 	u8* dstBuffer = NULL;
