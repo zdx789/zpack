@@ -11,7 +11,8 @@ class Package;
 class CompressedFile : public IReadFile
 {
 public:
-	CompressedFile(const Package* package, u64 offset, u32 compressedSize, u32 originSize, u32 flag);
+	CompressedFile(const Package* package, u64 offset, u32 compressedSize, u32 originSize,
+					u32 chunkSize, u32 flag);
 	virtual ~CompressedFile();
 
 	//from IFiled
@@ -37,6 +38,7 @@ private:
 private:
 	const Package*	m_package;
 	u64				m_offset;
+	u32				m_chunkSize;
 	u32				m_flag;
 	u32				m_compressedSize;
 	u32				m_originSize;

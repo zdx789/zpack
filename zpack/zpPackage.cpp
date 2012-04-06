@@ -133,12 +133,9 @@ IReadFile* Package::openFile(const Char* filename)
 	{
 		return new File(this, entry.byteOffset, entry.packSize, entry.flag, entry.nameHash);
 	}
-	else if ((entry.flag & FILE_WRITING) != 0)
-	{
-		//no way to read a compressed file while it's not done writing
-		return NULL;
-	}
-	CompressedFile* file = new CompressedFile(this, entry.byteOffset, entry.packSize, entry.originSize, entry.flag);
+	u32 chunkSize = entry.chunkSize == 0 ? m_header.chunkSize : entry.chunkSize;
+	CompressedFile* file = new CompressedFile(this, entry.byteOffset, entry.packSize, entry.originSize,
+												chunkSize, entry.flag);
 	if ((file->flag() & FILE_DELETE) != 0)
 	{
 		delete file;
@@ -228,6 +225,7 @@ bool Package::addFile(const Char* filename, const Char* externalFilename, u32 fi
 	entry.packSize = fileSize;
 	entry.originSize = fileSize;
 	entry.flag = flag;
+	entry.chunkSize = m_header.chunkSize;
 	memset(entry.reserved, 0, sizeof(entry.reserved));
 
 	u32 insertedIndex = insertFileEntry(entry, filename);
@@ -268,7 +266,7 @@ bool Package::addFile(const Char* filename, const Char* externalFilename, u32 fi
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-IWriteFile* Package::createFile(const Char* filename, u32 fileSize, u32 packSize, u32 flag)
+IWriteFile* Package::createFile(const Char* filename, u32 fileSize, u32 packSize, u32 chunkSize, u32 flag)
 {
 	if (m_readonly)
 	{
@@ -289,6 +287,11 @@ IWriteFile* Package::createFile(const Char* filename, u32 fileSize, u32 packSize
 	entry.originSize = fileSize;
 	flag |= FILE_WRITING;
 	entry.flag = flag;
+	if ((entry.flag & FILE_COMPRESS) == 0)
+	{
+		chunkSize = 0;
+	}
+	entry.chunkSize = chunkSize;
 	memset(entry.reserved, 0, sizeof(entry.reserved));
 
 	u32 insertedIndex = insertFileEntry(entry, filename);

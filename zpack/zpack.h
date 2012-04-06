@@ -82,7 +82,8 @@ public:
 	virtual bool addFile(const Char* filename, const Char* externalFilename, u32 fileSize, u32 flag,
 						u32* outPackSize = 0, u32* outFlag = 0) = 0;
 
-	virtual IWriteFile* createFile(const Char* filename, u32 fileSize, u32 packSize, u32 flag) = 0;
+	virtual IWriteFile* createFile(const Char* filename, u32 fileSize, u32 packSize,
+									u32 chunkSize = 0, u32 flag = 0) = 0;
 	virtual void closeFile(IWriteFile* file) = 0;
 
 	//can not remove files added after last flush() call
