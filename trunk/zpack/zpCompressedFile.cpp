@@ -9,13 +9,14 @@ namespace zp
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 CompressedFile::CompressedFile(const Package* package, u64 offset, u32 compressedSize, u32 originSize,
-								u32 chunkSize, u32 flag)
+								u32 chunkSize, u32 flag, u64 nameHash)
 	: m_package(package)
 	, m_offset(offset)
 	, m_chunkSize(chunkSize)
 	, m_flag(flag)
 	, m_compressedSize(compressedSize)
 	, m_originSize(originSize)
+	, m_nameHash(nameHash)
 	, m_readPos(0)
 	, m_chunkPos(NULL)
 	, m_fileData(NULL)
@@ -36,6 +37,12 @@ CompressedFile::CompressedFile(const Package* package, u64 offset, u32 compresse
 		return;
 	}
 
+	u32 availableSize = m_package->getFileAvailableSize(nameHash);
+	if (availableSize < m_chunkCount * sizeof(u32))
+	{
+		m_flag |= FILE_DELETE;
+		return;
+	}
 	//array of pointer to chunk data buffer
 	m_chunkData = new u8*[m_chunkCount];
 	memset(m_chunkData, 0, m_chunkCount * sizeof(u8*));
@@ -91,9 +98,29 @@ u32 CompressedFile::size() const
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 u32 CompressedFile::availableSize() const
 {
-	//need calculation here
-	assert(false);
-	return 0;
+	u32 rawAvailableSize = m_package->getFileAvailableSize(m_nameHash);
+	if (rawAvailableSize == m_compressedSize)
+	{
+		return m_originSize;
+	}
+	//not finished
+	if (m_chunkCount <= 1)
+	{
+		return 0;
+	}
+	if (rawAvailableSize < m_chunkCount * sizeof(u32))
+	{
+		return 0;
+	}
+	u32 available = 0;
+	for (u32 i = 1; i < m_chunkCount; ++i)
+	{
+		if (rawAvailableSize > m_chunkPos[i])
+		{
+			available += m_chunkSize;
+		}
+	}
+	return available;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

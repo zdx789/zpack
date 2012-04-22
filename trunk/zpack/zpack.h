@@ -38,6 +38,8 @@ typedef unsigned short u16;
 typedef unsigned long u32;
 typedef unsigned long long u64;
 
+const u32 MAX_FILENAME_LEN = 1024;
+
 const u32 OPEN_READONLY = 1;
 const u32 OPEN_NO_FILENAME = 2;
 
@@ -92,7 +94,7 @@ public:
 	//return true if there's any unsaved change of package
 	virtual bool dirty() const = 0;
 
-	//nothing is really changed untill calling this function
+	//package file won't change before calling this function
 	virtual void flush() = 0;
 
 	virtual u64 countFragmentSize() const = 0;

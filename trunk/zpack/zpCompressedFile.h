@@ -12,7 +12,7 @@ class CompressedFile : public IReadFile
 {
 public:
 	CompressedFile(const Package* package, u64 offset, u32 compressedSize, u32 originSize,
-					u32 chunkSize, u32 flag);
+					u32 chunkSize, u32 flag, u64 nameHash);
 	virtual ~CompressedFile();
 
 	//from IFiled
@@ -42,6 +42,7 @@ private:
 	u32				m_flag;
 	u32				m_compressedSize;
 	u32				m_originSize;
+	u64				m_nameHash;
 
 	u32				m_readPos;
 	u32				m_chunkCount;
