@@ -23,8 +23,6 @@ const u32 MIN_CHUNK_SIZE = 0x1000;
 
 const u32 HASH_SEED = 131;
 
-const int MAX_URL_LEN = 1024;
-
 using namespace std;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -135,7 +133,7 @@ IReadFile* Package::openFile(const Char* filename)
 	}
 	u32 chunkSize = entry.chunkSize == 0 ? m_header.chunkSize : entry.chunkSize;
 	CompressedFile* file = new CompressedFile(this, entry.byteOffset, entry.packSize, entry.originSize,
-												chunkSize, entry.flag);
+												chunkSize, entry.flag, entry.nameHash);
 	if ((file->flag() & FILE_DELETE) != 0)
 	{
 		delete file;
@@ -505,7 +503,7 @@ bool Package::readFileEntries()
 	}
 	else
 	{
-		std::vector<u8> srcBuffer(m_header.fileEntrySize);
+		vector<u8> srcBuffer(m_header.fileEntrySize);
 		fread(&srcBuffer[0], m_header.fileEntrySize, 1, m_stream);
 		u32 dstBufferSize = m_header.fileCount * sizeof(FileEntry);
 		int ret = uncompress((u8*)&m_fileEntries[0], &dstBufferSize, &srcBuffer[0], m_header.fileEntrySize);
@@ -529,7 +527,7 @@ bool Package::readFilenames()
 		return false;
 	}
 	_fseeki64(m_stream, m_header.filenameOffset, SEEK_SET);
-	std::vector<u8> dstBuffer(m_header.originFilenameSize);
+	vector<u8> dstBuffer(m_header.originFilenameSize);
 	if (m_header.filenameSize == m_header.originFilenameSize)
 	{
 		//not compressed
@@ -537,7 +535,7 @@ bool Package::readFilenames()
 	}
 	else
 	{
-		std::vector<u8> tempBuffer(m_header.filenameSize);
+		vector<u8> tempBuffer(m_header.filenameSize);
 		fread(&tempBuffer[0], m_header.filenameSize, 1, m_stream);
 		u32 originSize = m_header.originFilenameSize;
 		int ret = uncompress(&dstBuffer[0], &originSize, &tempBuffer[0], m_header.filenameSize);
@@ -555,8 +553,8 @@ bool Package::readFilenames()
 	IStringStream iss(names, IStringStream::in);
 	for (u32 i = 0; i < m_fileEntries.size(); ++i)
 	{
-		Char out[MAX_URL_LEN];
-		iss.getline(out, MAX_URL_LEN);
+		Char out[MAX_FILENAME_LEN];
+		iss.getline(out, MAX_FILENAME_LEN);
 		m_filenames[i] = out;
 	}
 	return true;
@@ -596,7 +594,7 @@ void Package::writeTables(bool avoidOverwrite)
 	u32 srcEntrySize = m_fileEntries.size() * sizeof(FileEntry);
 	u32 dstEntrySize = srcEntrySize;
 
-	std::vector<u8> dstEntryBuffer(dstEntrySize);
+	vector<u8> dstEntryBuffer(dstEntrySize);
 	int ret = compress(&dstEntryBuffer[0], &dstEntrySize, (u8*)&m_fileEntries[0], srcEntrySize);
 	if (ret != Z_OK || dstEntrySize >= srcEntrySize)
 	{
@@ -613,7 +611,7 @@ void Package::writeTables(bool avoidOverwrite)
 	u32 srcFilenameSize = srcFilename.length() * sizeof(Char);
 	u32 dstFilenameSize = srcFilenameSize;
 
-	std::vector<u8> dstFilenameBuffer(dstFilenameSize);
+	vector<u8> dstFilenameBuffer(dstFilenameSize);
 	ret = compress(&dstFilenameBuffer[0], &dstFilenameSize, (const u8*)srcFilename.c_str(), srcFilenameSize);
 	if (ret != Z_OK || dstFilenameSize >= srcFilenameSize)
 	{
@@ -956,7 +954,7 @@ u32 Package::getFileAvailableSize(u64 nameHash) const
 	const FileEntry& entry = m_fileEntries[fileIndex];
 	if ((entry.flag & FILE_WRITING) == 0)
 	{
-		return entry.originSize;
+		return entry.packSize;
 	}
 	return entry.flag & 0xfffff000;
 }
