@@ -86,7 +86,6 @@ public:
 	virtual bool dirty() const;
 	virtual void flush();
 
-	virtual u64 countFragmentSize() const;
 	virtual bool defrag(Callback callback, void* callbackParam);
 
 private:
