@@ -98,17 +98,17 @@ CMD_PROC(extract)
 	return g_explorer.extract(param0, param1);
 }
 
-CMD_PROC(fragment)
-{
-	zp::IPackage* pack = g_explorer.getPack();
-	if (pack == NULL)
-	{
-		return false;
-	}
-	unsigned __int64 fragSize = pack->countFragmentSize();
-	COUT << "fragment:" << fragSize << " bytes" << endl;
-	return true;
-}
+//CMD_PROC(fragment)
+//{
+//	zp::IPackage* pack = g_explorer.getPack();
+//	if (pack == NULL)
+//	{
+//		return false;
+//	}
+//	unsigned __int64 fragSize = pack->countFragmentSize();
+//	COUT << "fragment:" << fragSize << " bytes" << endl;
+//	return true;
+//}
 
 CMD_PROC(defrag)
 {
@@ -131,7 +131,7 @@ CMD_PROC(help)
 	HELP_ITEM("add [soure path] [dest path]", "add a disk file or directory to package");
 	HELP_ITEM("del [internal path]", "delete a file or directory from package");
 	HELP_ITEM("extract [source path] [dest path]", "extrace file or directories to disk");
-	HELP_ITEM("fragment", "calculate fragment bytes and how many bytes to move to defrag");
+	//HELP_ITEM("fragment", "calculate fragment bytes and how many bytes to move to defrag");
 	HELP_ITEM("defrag", "compact file, remove all fragments");
 	HELP_ITEM("exit", "exit program");
 	return true;
@@ -150,7 +150,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	REGISTER_CMD(close);
 	REGISTER_CMD(dir);
 	REGISTER_CMD(cd);
-	REGISTER_CMD(fragment);
+	//REGISTER_CMD(fragment);
 	REGISTER_CMD(defrag);
 	REGISTER_CMD(help);
 

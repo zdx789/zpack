@@ -97,7 +97,6 @@ public:
 	//package file won't change before calling this function
 	virtual void flush() = 0;
 
-	virtual u64 countFragmentSize() const = 0;
 	virtual bool defrag(Callback callback, void* callbackParam) = 0;	//can be very slow, don't call this all the time
 
 protected:

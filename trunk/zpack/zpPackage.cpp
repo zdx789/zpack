@@ -351,26 +351,6 @@ void Package::flush()
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-u64 Package::countFragmentSize() const
-{
-	if (m_dirty)
-	{
-		return 0;
-	}
-	m_lastSeekFile = NULL;
-
-	u64 totalSize = m_header.headerSize + m_fileEntries.size() * sizeof(FileEntry) + m_header.filenameSize;
-	for (u32 i = 0; i < m_fileEntries.size(); ++i)
-	{
-		const FileEntry& entry = m_fileEntries[i];
-		totalSize += entry.packSize;
-	}
-	_fseeki64(m_stream, 0, SEEK_END);
-	u64 currentSize = _ftelli64(m_stream);
-	return currentSize - totalSize;
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
 bool Package::defrag(Callback callback, void* callbackParam)
 {
 	if (m_readonly || m_dirty)
@@ -972,6 +952,8 @@ bool Package::setFileAvailableSize(u64 nameHash, u32 size)
 	{
 		return false;
 	}
+	m_dirty = true;
+
 	entry.flag = (entry.flag & 0x00000fff) | (size & 0xfffff000);
 	if (size == entry.packSize)
 	{

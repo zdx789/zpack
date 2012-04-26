@@ -283,15 +283,15 @@ void CMainFrame::OnFileDefrag()
 	{
 		return;
 	}
-	zp::u64 fragSize = explorer.getPack()->countFragmentSize();
-	if (fragSize == 0)
-	{
-		::MessageBox(NULL, _T("No fragment found in package."), _T("Note"), MB_OK | MB_ICONINFORMATION);
-		return;
-	}
-	StringStream tip;
-	tip << _T("You can save ") << fragSize << _T(" bytes, continue?");
-	if (::MessageBox(NULL, tip.str().c_str(), _T("Note"), MB_YESNO | MB_ICONQUESTION) != IDYES)
+	//zp::u64 fragSize = explorer.getPack()->countFragmentSize();
+	//if (fragSize == 0)
+	//{
+	//	::MessageBox(NULL, _T("No fragment found in package."), _T("Note"), MB_OK | MB_ICONINFORMATION);
+	//	return;
+	//}
+	//StringStream tip;
+	//tip << _T("You can save ") << fragSize << _T(" bytes, continue?");
+	if (::MessageBox(NULL, _T("It will take minutes for large package, continue?"), _T("Note"), MB_YESNO | MB_ICONQUESTION) != IDYES)
 	{
 		return;
 	}
