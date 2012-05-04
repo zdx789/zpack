@@ -29,7 +29,7 @@ void close(IPackage* package)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-IPackage* create(const Char* filename, u32 chunkSize)
+IPackage* create(const Char* filename, u32 chunkSize, u32 fileUserDataSize)
 {
 	fstream stream;
 	locale loc = locale::global(locale(""));
@@ -46,15 +46,16 @@ IPackage* create(const Char* filename, u32 chunkSize)
 	header.fileCount = 0;
 	header.fileEntryOffset = sizeof(PackageHeader);
 	header.filenameOffset = sizeof(PackageHeader);
-	header.fileEntrySize = 0;
-	header.filenameSize = 0;
-	header.originFilenameSize = 0;
+	header.allFileEntrySize = 0;
+	header.allFilenameSize = 0;
+	header.originFilenamesSize = 0;
 	header.chunkSize = chunkSize;
 #ifdef ZP_USE_WCHAR
 	header.flag = PACK_UNICODE;
 #else
 	header.flag = 0;
 #endif
+	header.fileEntrySize = sizeof(FileEntry) + fileUserDataSize;
 	memset(header.reserved, 0, sizeof(header.reserved));
 
 	stream.write((char*)&header, sizeof(header));

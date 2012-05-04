@@ -45,9 +45,12 @@ const u32 OPEN_NO_FILENAME = 2;
 
 const u32 PACK_UNICODE = 1;
 
-const u32 FILE_DELETE = 1;
-const u32 FILE_COMPRESS = 2;
-const u32 FILE_WRITING = 4;
+const u32 FILE_DELETE = (1<<0);
+const u32 FILE_COMPRESS = (1<<1);
+const u32 FILE_WRITING = (1<<2);
+
+const u32 FILE_FLAG_USER0 = (1<<10);
+const u32 FILE_FLAG_USER1 = (1<<11);
 
 typedef bool (*Callback)(const Char* path, zp::u32 fileSize, void* param);
 
@@ -72,8 +75,9 @@ public:
 
 	virtual u32 getFileCount() const = 0;
 	virtual bool getFileInfo(u32 index, Char* filenameBuffer, u32 filenameBufferSize,
-							u32* fileSize = 0, u32* packSize = 0, u32* flag = 0) const = 0;
-
+							u32* fileSize = 0, u32* packSize = 0, u32* flag = 0, u64* contentHash = 0) const = 0;
+	virtual bool getFileInfo(const Char* filename, u32* fileSize = 0, u32* packSize = 0,
+							u32* flag = 0, u64* contentHash = 0) const = 0;
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
 	//package manipulation fuctions, not available in read only mode
@@ -85,7 +89,8 @@ public:
 						u32* outPackSize = 0, u32* outFlag = 0) = 0;
 
 	virtual IWriteFile* createFile(const Char* filename, u32 fileSize, u32 packSize,
-									u32 chunkSize = 0, u32 flag = 0) = 0;
+									u32 chunkSize = 0, u32 flag = 0, u64 contentHash = 0) = 0;
+	virtual IWriteFile* openFileToWrite(const wchar_t* filename) = 0;
 	virtual void closeFile(IWriteFile* file) = 0;
 
 	//can not remove files added after last flush() call
@@ -98,6 +103,11 @@ public:
 	virtual void flush() = 0;
 
 	virtual bool defrag(Callback callback, void* callbackParam) = 0;	//can be very slow, don't call this all the time
+
+	virtual u32 getFileUserDataSize() const = 0;
+
+	virtual bool writeFileUserData(const Char* filename, const u8* data, u32 dataLen) = 0;
+	virtual bool readFileUserData(const Char* filename, u8* data, u32 dataLen) = 0;
 
 protected:
 	virtual ~IPackage(){}
@@ -115,6 +125,8 @@ public:
 
 	virtual void seek(u32 pos) = 0;
 
+	virtual u32 tell() const = 0;
+
 	virtual u32 read(u8* buffer, u32 size) = 0;
 
 protected:
@@ -125,7 +137,13 @@ protected:
 class IWriteFile
 {
 public:
+	virtual u32 size() const = 0;
+
 	virtual u32 flag() const = 0;
+
+	virtual void seek(u32 pos) = 0;
+
+	virtual u32 tell() const = 0;
 
 	virtual u32 write(const u8* buffer, u32 size) = 0;
 
@@ -134,7 +152,7 @@ protected:
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-IPackage* create(const Char* filename, u32 chunkSize = 0x40000);
+IPackage* create(const Char* filename, u32 chunkSize = 0x40000, u32 fileUserDataSize = 0);
 IPackage* open(const Char* filename, u32 flag = OPEN_READONLY | OPEN_NO_FILENAME);
 void close(IPackage* package);
 

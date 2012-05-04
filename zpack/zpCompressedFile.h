@@ -24,6 +24,8 @@ public:
 
 	virtual void seek(u32 pos);
 
+	virtual u32 tell() const;
+
 	virtual u32 read(u8* buffer, u32 size);
 
 private:
@@ -36,13 +38,13 @@ private:
 	bool readChunk(u32 chunkIndex, u32 offset, u32 readSize, u8* buffer);
 
 private:
-	const Package*	m_package;
 	u64				m_offset;
+	u64				m_nameHash;
+	const Package*	m_package;
 	u32				m_chunkSize;
 	u32				m_flag;
 	u32				m_compressedSize;
 	u32				m_originSize;
-	u64				m_nameHash;
 
 	u32				m_readPos;
 	u32				m_chunkCount;
