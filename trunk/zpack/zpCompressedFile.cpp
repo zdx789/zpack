@@ -103,7 +103,7 @@ u32 CompressedFile::availableSize() const
 	{
 		return m_originSize;
 	}
-	//not finished
+	//not finished, convert to origin size
 	if (m_chunkCount <= 1)
 	{
 		return 0;
@@ -132,7 +132,20 @@ u32 CompressedFile::flag() const
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void CompressedFile::seek(u32 pos)
 {
-	m_readPos = pos;
+	if (pos > m_originSize)
+	{
+		m_readPos = m_originSize;
+	}
+	else
+	{
+		m_readPos = pos;
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+u32 CompressedFile::tell() const
+{
+	return m_readPos;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -144,7 +157,7 @@ u32 CompressedFile::read(u8* buffer, u32 size)
 	{
 		size = m_originSize - m_readPos;
 	}
-	if (m_originSize == 0)
+	if (size == 0)
 	{
 		return 0;
 	}

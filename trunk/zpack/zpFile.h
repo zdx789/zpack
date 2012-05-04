@@ -22,17 +22,19 @@ public:
 
 	virtual void seek(u32 pos);
 
+	virtual u32 tell() const;
+
 	virtual u32 read(u8* buffer, u32 size);
 
 private:
 	void seekInPackage();
 
 private:
-	const Package*	m_package;
 	u64				m_offset;
+	u64				m_nameHash;
+	const Package*	m_package;
 	u32				m_flag;
 	u32				m_size;
-	u64				m_nameHash;
 	u32				m_readPos;
 };
 

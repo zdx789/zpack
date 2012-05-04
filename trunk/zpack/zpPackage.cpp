@@ -32,7 +32,6 @@ Package::Package(const Char* filename, bool readonly, bool readFilename)
 	, m_packageEnd(0)
 	, m_hashMask(0)
 	, m_readonly(readonly)
-	, m_readFilename(readFilename)
 	, m_lastSeekFile(NULL)
 	, m_dirty(false)
 {
@@ -53,18 +52,17 @@ Package::Package(const Char* filename, bool readonly, bool readFilename)
 	{
 		return;
 	}
-	if (!readHeader() || !readFileEntries() || !readFilenames())
+	if (!readHeader() || !readFileEntries())
 	{
-		fclose(m_stream);
-		m_stream = NULL;
-		return;
+		goto Error;
 	}
-
+	if (readFilename && !readFilenames())
+	{
+		goto Error;
+	}
 	if (!buildHashTable())
 	{
-		fclose(m_stream);
-		m_stream = NULL;
-		return;
+		goto Error;
 	}
 	m_packageFilename = filename;
 	if (!readonly)
@@ -72,6 +70,13 @@ Package::Package(const Char* filename, bool readonly, bool readFilename)
 		//for compress output
 		m_compressBuffer.resize(m_header.chunkSize);
 		m_chunkData.resize(m_header.chunkSize);
+	}
+	return;
+Error:
+	if (m_stream != NULL)
+	{
+		fclose(m_stream);
+		m_stream = NULL;
 	}
 }
 
@@ -126,7 +131,7 @@ IReadFile* Package::openFile(const Char* filename)
 	{
 		return NULL;
 	}
-	FileEntry& entry = m_fileEntries[fileIndex];
+	FileEntry& entry = getFileEntry(fileIndex);
 	if ((entry.flag & FILE_COMPRESS) == 0)
 	{
 		return new File(this, entry.byteOffset, entry.packSize, entry.flag, entry.nameHash);
@@ -162,13 +167,8 @@ void Package::closeFile(IWriteFile* file)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-u32 Package::getFileCount() const
-{
-	return (u32)m_fileEntries.size();
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-bool Package::getFileInfo(u32 index, Char* filenameBuffer, u32 filenameBufferSize, u32* fileSize, u32* packSize, u32* flag) const
+bool Package::getFileInfo(u32 index, Char* filenameBuffer, u32 filenameBufferSize, u32* fileSize,
+							u32* packSize, u32* flag, u64* contentHash) const
 {
 	if (index >= m_filenames.size())
 	{
@@ -179,7 +179,7 @@ bool Package::getFileInfo(u32 index, Char* filenameBuffer, u32 filenameBufferSiz
 		Strcpy(filenameBuffer, filenameBufferSize, m_filenames[index].c_str());
 		filenameBuffer[filenameBufferSize - 1] = 0;
 	}
-	const FileEntry& entry = m_fileEntries[index];
+	const FileEntry& entry = getFileEntry(index);
 	if (fileSize != NULL)
 	{
 		*fileSize = entry.originSize;
@@ -191,6 +191,38 @@ bool Package::getFileInfo(u32 index, Char* filenameBuffer, u32 filenameBufferSiz
 	if (flag != NULL)
 	{
 		*flag = entry.flag;
+	}
+	if (contentHash != NULL)
+	{
+		*contentHash = entry.contentHash;
+	}
+	return true;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+bool Package::getFileInfo(const Char* filename, u32* fileSize, u32* packSize, u32* flag, u64* contentHash) const
+{
+	int fileIndex = getFileIndex(filename);
+	if (fileIndex < 0)
+	{
+		return false;
+	}
+	const FileEntry& entry = getFileEntry(fileIndex);
+	if (fileSize != NULL)
+	{
+		*fileSize = entry.originSize;
+	}
+	if (packSize != NULL)
+	{
+		*packSize = entry.packSize;
+	}
+	if (flag != NULL)
+	{
+		*flag = entry.flag;
+	}
+	if (contentHash != NULL)
+	{
+		*contentHash = entry.contentHash;
 	}
 	return true;
 }
@@ -216,7 +248,7 @@ bool Package::addFile(const Char* filename, const Char* externalFilename, u32 fi
 	if (fileIndex >= 0)
 	{
 		//file exist
-		m_fileEntries[fileIndex].flag |= FILE_DELETE;
+		getFileEntry(fileIndex).flag |= FILE_DELETE;
 	}
 	FileEntry entry;
 	entry.nameHash = stringHash(filename, HASH_SEED);
@@ -224,14 +256,15 @@ bool Package::addFile(const Char* filename, const Char* externalFilename, u32 fi
 	entry.originSize = fileSize;
 	entry.flag = flag;
 	entry.chunkSize = m_header.chunkSize;
-	memset(entry.reserved, 0, sizeof(entry.reserved));
+	entry.contentHash = 0;
+	//memset(entry.reserved, 0, sizeof(entry.reserved));
 
 	u32 insertedIndex = insertFileEntry(entry, filename);
 
 	if (!insertFileHash(entry.nameHash, insertedIndex))
 	{
 		//may be hash confliction
-		m_fileEntries[insertedIndex].flag |= FILE_DELETE;
+		getFileEntry(insertedIndex).flag |= FILE_DELETE;
 		return false;
 	}
 	
@@ -243,28 +276,29 @@ bool Package::addFile(const Char* filename, const Char* externalFilename, u32 fi
 	{
 		if ((entry.flag & FILE_COMPRESS) == 0)
 		{
-			writeRawFile(m_fileEntries[insertedIndex], file);
+			writeRawFile(getFileEntry(insertedIndex), file);
 		}
 		else
 		{
-			writeCompressFile(m_fileEntries[insertedIndex], file);
+			writeCompressFile(getFileEntry(insertedIndex), file);
 		}
 	}
 	fclose(file);
 
 	if (outPackSize != NULL)
 	{
-		*outPackSize = m_fileEntries[insertedIndex].packSize;
+		*outPackSize = getFileEntry(insertedIndex).packSize;
 	}
 	if (outFlag != NULL)
 	{
-		*outFlag = m_fileEntries[insertedIndex].flag;
+		*outFlag = getFileEntry(insertedIndex).flag;
 	}
 	return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-IWriteFile* Package::createFile(const Char* filename, u32 fileSize, u32 packSize, u32 chunkSize, u32 flag)
+IWriteFile* Package::createFile(const Char* filename, u32 fileSize, u32 packSize, u32 chunkSize,
+								u32 flag, u64 contentHash)
 {
 	if (m_readonly)
 	{
@@ -276,7 +310,7 @@ IWriteFile* Package::createFile(const Char* filename, u32 fileSize, u32 packSize
 	if (fileIndex >= 0)
 	{
 		//file exist
-		m_fileEntries[fileIndex].flag |= FILE_DELETE;
+		getFileEntry(fileIndex).flag |= FILE_DELETE;
 	}
 
 	FileEntry entry;
@@ -290,17 +324,38 @@ IWriteFile* Package::createFile(const Char* filename, u32 fileSize, u32 packSize
 		chunkSize = 0;
 	}
 	entry.chunkSize = chunkSize;
-	memset(entry.reserved, 0, sizeof(entry.reserved));
+	entry.contentHash = contentHash;
+	//memset(entry.reserved, 0, sizeof(entry.reserved));
 
 	u32 insertedIndex = insertFileEntry(entry, filename);
 
 	if (!insertFileHash(entry.nameHash, insertedIndex))
 	{
 		//hash confliction
-		m_fileEntries[insertedIndex].flag |= FILE_DELETE;
+		getFileEntry(insertedIndex).flag |= FILE_DELETE;
 		return NULL;
 	}
 
+	return new WriteFile(this, entry.byteOffset, entry.packSize, entry.flag, entry.nameHash);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+IWriteFile* Package::openFileToWrite(const wchar_t* filename)
+{
+	if (m_readonly)
+	{
+		return NULL;
+	}
+	int fileIndex = getFileIndex(filename);
+	if (fileIndex < 0)
+	{
+		return NULL;
+	}
+	FileEntry& entry = getFileEntry(fileIndex);
+	if ((entry.flag & FILE_DELETE) != 0)
+	{
+		return NULL;
+	}
 	return new WriteFile(this, entry.byteOffset, entry.packSize, entry.flag, entry.nameHash);
 }
 
@@ -317,7 +372,7 @@ bool Package::removeFile(const Char* filename)
 		return false;
 	}
 	//hash table doesn't change until flush£¬so we shouldn't remove entry here
-	m_fileEntries[fileIndex].flag |= FILE_DELETE;
+	getFileEntry(fileIndex).flag |= FILE_DELETE;
 	m_dirty = true;
 	return true;
 }
@@ -375,9 +430,10 @@ bool Package::defrag(Callback callback, void* callbackParam)
 	u64 currentChunkPos = nextPos;
 	u64 fragmentSize = 0;
 	u32 currentChunkSize = 0;
-	for (u32 i = 0; i < m_fileEntries.size(); ++i)
+	u32 fileCount = getFileCount();
+	for (u32 i = 0; i < fileCount; ++i)
 	{
-		FileEntry& entry = m_fileEntries[i];
+		FileEntry& entry = getFileEntry(i);
 		if (callback != NULL && !callback(m_filenames[i].c_str(), entry.originSize, callbackParam))
 		{
 			//stop
@@ -439,6 +495,47 @@ bool Package::defrag(Callback callback, void* callbackParam)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+u32 Package::getFileUserDataSize() const
+{
+	assert(m_header.fileEntrySize >= sizeof(FileEntry));
+	return m_header.fileEntrySize - sizeof(FileEntry);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+bool Package::writeFileUserData(const Char* filename, const u8* data, u32 dataLen)
+{
+	if (dataLen > getFileUserDataSize())
+	{
+		return false;
+	}
+	int fileIndex = getFileIndex(filename);
+	if (fileIndex < 0)
+	{
+		return false;
+	}
+	FileEntry& entry = getFileEntry(fileIndex);
+	memcpy(&entry + 1, data, dataLen);
+	return true;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+bool Package::readFileUserData(const Char* filename, u8* data, u32 dataLen)
+{
+	if (dataLen > getFileUserDataSize())
+	{
+		return false;
+	}
+	int fileIndex = getFileIndex(filename);
+	if (fileIndex < 0)
+	{
+		return false;
+	}
+	FileEntry& entry = getFileEntry(fileIndex);
+	memcpy(data, &entry + 1, dataLen);
+	return true;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 bool Package::readHeader()
 {
 	_fseeki64(m_stream, 0, SEEK_END);
@@ -452,9 +549,9 @@ bool Package::readHeader()
 	if (m_header.sign != PACKAGE_FILE_SIGN
 		|| m_header.headerSize != sizeof(PackageHeader)
 		|| m_header.fileEntryOffset < m_header.headerSize
-		|| m_header.fileEntryOffset + m_header.fileEntrySize > packageSize
-		|| m_header.filenameOffset < m_header.fileEntryOffset + m_header.fileEntrySize
-		|| m_header.filenameOffset + m_header.filenameSize > packageSize
+		|| m_header.fileEntryOffset + m_header.allFileEntrySize > packageSize
+		|| m_header.filenameOffset < m_header.fileEntryOffset + m_header.allFileEntrySize
+		|| m_header.filenameOffset + m_header.allFilenameSize > packageSize
 		|| m_header.chunkSize < MIN_CHUNK_SIZE)
 	{
 		return false;
@@ -463,31 +560,39 @@ bool Package::readHeader()
 	{
 		return false;
 	}
-	m_packageEnd = m_header.filenameOffset + m_header.filenameSize;
+	if (m_header.fileEntrySize == 0)
+	{
+		m_header.fileEntrySize = sizeof(FileEntry);
+	}
+	if (m_header.fileEntrySize < sizeof(FileEntry))
+	{
+		return false;
+	}
+	m_packageEnd = m_header.filenameOffset + m_header.allFilenameSize;
 	return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool Package::readFileEntries()
 {
-	m_fileEntries.resize(m_header.fileCount);
+	m_fileEntries.resize(m_header.fileCount * m_header.fileEntrySize);
 	if (m_header.fileCount == 0)
 	{
 		return true;
 	}
 	_fseeki64(m_stream, m_header.fileEntryOffset, SEEK_SET);
-	if (m_header.fileEntrySize == m_header.fileCount * sizeof(FileEntry))
+	if (m_header.allFileEntrySize == m_header.fileCount * m_header.fileEntrySize)
 	{
 		//not compressed
-		fread(&m_fileEntries[0], m_header.fileEntrySize, 1, m_stream);
+		fread(&m_fileEntries[0], m_header.allFileEntrySize, 1, m_stream);
 	}
 	else
 	{
-		vector<u8> srcBuffer(m_header.fileEntrySize);
-		fread(&srcBuffer[0], m_header.fileEntrySize, 1, m_stream);
-		u32 dstBufferSize = m_header.fileCount * sizeof(FileEntry);
-		int ret = uncompress((u8*)&m_fileEntries[0], &dstBufferSize, &srcBuffer[0], m_header.fileEntrySize);
-		if (ret != Z_OK || dstBufferSize != m_header.fileCount * sizeof(FileEntry))
+		vector<u8> srcBuffer(m_header.allFileEntrySize);
+		fread(&srcBuffer[0], m_header.allFileEntrySize, 1, m_stream);
+		u32 dstBufferSize = m_header.fileCount * m_header.fileEntrySize;
+		int ret = uncompress(&m_fileEntries[0], &dstBufferSize, &srcBuffer[0], m_header.allFileEntrySize);
+		if (ret != Z_OK || dstBufferSize != m_header.fileCount * m_header.fileEntrySize)
 		{
 			return false;
 		}
@@ -498,40 +603,41 @@ bool Package::readFileEntries()
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool Package::readFilenames()
 {
-	if (m_fileEntries.empty() || !m_readFilename)
+	if (m_fileEntries.empty())
 	{
 		return true;
 	}
-	if (m_header.filenameSize == 0)
+	if (m_header.allFilenameSize == 0)
 	{
 		return false;
 	}
 	_fseeki64(m_stream, m_header.filenameOffset, SEEK_SET);
-	vector<u8> dstBuffer(m_header.originFilenameSize);
-	if (m_header.filenameSize == m_header.originFilenameSize)
+	vector<u8> dstBuffer(m_header.originFilenamesSize);
+	if (m_header.allFilenameSize == m_header.originFilenamesSize)
 	{
 		//not compressed
-		fread(&dstBuffer[0], m_header.filenameSize, 1, m_stream);
+		fread(&dstBuffer[0], m_header.allFilenameSize, 1, m_stream);
 	}
 	else
 	{
-		vector<u8> tempBuffer(m_header.filenameSize);
-		fread(&tempBuffer[0], m_header.filenameSize, 1, m_stream);
-		u32 originSize = m_header.originFilenameSize;
-		int ret = uncompress(&dstBuffer[0], &originSize, &tempBuffer[0], m_header.filenameSize);
-		if (ret != Z_OK || originSize != m_header.originFilenameSize)
+		vector<u8> tempBuffer(m_header.allFilenameSize);
+		fread(&tempBuffer[0], m_header.allFilenameSize, 1, m_stream);
+		u32 originSize = m_header.originFilenamesSize;
+		int ret = uncompress(&dstBuffer[0], &originSize, &tempBuffer[0], m_header.allFilenameSize);
+		if (ret != Z_OK || originSize != m_header.originFilenamesSize)
 		{
 			return false;
 		}
 	}
 	
 	String names;
-	names.assign((Char*)&dstBuffer[0], m_header.originFilenameSize / sizeof(Char));
+	names.assign((Char*)&dstBuffer[0], m_header.originFilenamesSize / sizeof(Char));
 	
-	m_filenames.resize(m_fileEntries.size());
+	u32 fileCount = getFileCount();
+	m_filenames.resize(fileCount);
 	
 	IStringStream iss(names, IStringStream::in);
-	for (u32 i = 0; i < m_fileEntries.size(); ++i)
+	for (u32 i = 0; i < fileCount; ++i)
 	{
 		Char out[MAX_FILENAME_LEN];
 		iss.getline(out, MAX_FILENAME_LEN);
@@ -547,22 +653,23 @@ void Package::removeDeletedEntries()
 	{
 		return;
 	}
-	assert(m_fileEntries.size() == m_filenames.size());
+	assert(getFileCount() == m_filenames.size());
 
-	//m_header.fileCount and m_header.filenameSize will not change
+	//m_header.fileCount and m_header.allFilenameSize will not change
 	vector<String>::iterator nameIter = m_filenames.begin();
-	for (vector<FileEntry>::iterator iter = m_fileEntries.begin();
-		iter != m_fileEntries.end(); )
+	u32 fileCount = getFileCount();
+	for (u32 i = 0; i < fileCount;)
 	{
-		FileEntry& entry = *iter;
+		FileEntry& entry = getFileEntry(i);
 		if ((entry.flag & FILE_DELETE) != 0)
 		{
-			iter = m_fileEntries.erase(iter);
+			m_fileEntries.erase(m_fileEntries.begin(), m_fileEntries.begin() + m_header.fileEntrySize);
 			nameIter = m_filenames.erase(nameIter);
 			m_dirty = true;
+			--fileCount;
 			continue;
 		}
-		++iter;
+		++i;
 		++nameIter;
 	}
 }
@@ -571,11 +678,11 @@ void Package::removeDeletedEntries()
 void Package::writeTables(bool avoidOverwrite)
 {
 	//compress file entries
-	u32 srcEntrySize = m_fileEntries.size() * sizeof(FileEntry);
+	u32 srcEntrySize = m_fileEntries.size();
 	u32 dstEntrySize = srcEntrySize;
 
 	vector<u8> dstEntryBuffer(dstEntrySize);
-	int ret = compress(&dstEntryBuffer[0], &dstEntrySize, (u8*)&m_fileEntries[0], srcEntrySize);
+	int ret = compress(&dstEntryBuffer[0], &dstEntrySize, &m_fileEntries[0], srcEntrySize);
 	if (ret != Z_OK || dstEntrySize >= srcEntrySize)
 	{
 		dstEntrySize = srcEntrySize;
@@ -605,18 +712,19 @@ void Package::writeTables(bool avoidOverwrite)
 	}
 	else
 	{
-		FileEntry& last =  m_fileEntries.back();
+		u32 lastIndex = getFileCount() - 1;
+		FileEntry& last =  getFileEntry(lastIndex);
 		u64 lastFileEnd = last.byteOffset + last.packSize;
 		if (avoidOverwrite)
 		{
-			if ((lastFileEnd >= m_header.filenameOffset + m_header.filenameSize) ||
+			if ((lastFileEnd >= m_header.filenameOffset + m_header.allFilenameSize) ||
 				(lastFileEnd + dstEntrySize + dstFilenameSize <= m_header.fileEntryOffset))
 			{
 				m_header.fileEntryOffset = lastFileEnd;
 			}
 			else
 			{
-				m_header.fileEntryOffset = m_header.filenameOffset + m_header.filenameSize;
+				m_header.fileEntryOffset = m_header.filenameOffset + m_header.allFilenameSize;
 			}
 		}
 		else
@@ -643,17 +751,17 @@ void Package::writeTables(bool avoidOverwrite)
 		fwrite(&dstFilenameBuffer[0], dstFilenameSize, 1, m_stream);
 	}
 
-	m_header.fileCount = (u32)m_fileEntries.size();
-	m_header.fileEntrySize = dstEntrySize;
-	m_header.filenameOffset = m_header.fileEntryOffset + m_header.fileEntrySize;
-	m_header.filenameSize = dstFilenameSize;
-	m_header.originFilenameSize = srcFilenameSize;
+	m_header.fileCount = getFileCount();
+	m_header.allFileEntrySize = dstEntrySize;
+	m_header.filenameOffset = m_header.fileEntryOffset + m_header.allFileEntrySize;
+	m_header.allFilenameSize = dstFilenameSize;
+	m_header.originFilenamesSize = srcFilenameSize;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool Package::buildHashTable()
 {
-	u32 requireSize = m_fileEntries.size() * HASH_TABLE_SCALE;
+	u32 requireSize = getFileCount() * HASH_TABLE_SCALE;
 	u32 tableSize = MIN_HASH_TABLE_SIZE;
 	m_hashBits = MIN_HASH_BITS;
 	while (tableSize < requireSize)
@@ -670,13 +778,14 @@ bool Package::buildHashTable()
 	bool wrong = false;
 	m_hashTable.clear();
 	m_hashTable.resize(tableSize, -1);
-	for (u32 i = 0; i < m_fileEntries.size(); ++i)
+	u32 fileCount = getFileCount();
+	for (u32 i = 0; i < fileCount; ++i)
 	{
-		const FileEntry& currentEntry = m_fileEntries[i];
+		const FileEntry& currentEntry = getFileEntry(i);
 		u32 index = (currentEntry.nameHash & m_hashMask);
 		while (m_hashTable[index] != -1)
 		{
-			const FileEntry& conflictEntry = m_fileEntries[m_hashTable[index]];
+			const FileEntry& conflictEntry = getFileEntry(m_hashTable[index]);
 			if (!wrong && (conflictEntry.flag & FILE_DELETE) == 0
 				&& conflictEntry.nameHash == currentEntry.nameHash)
 			{
@@ -707,7 +816,7 @@ int Package::getFileIndex(u64 nameHash) const
 	int fileIndex = m_hashTable[hashIndex];
 	while (fileIndex >= 0)
 	{
-		const FileEntry& entry = m_fileEntries[fileIndex];
+		const FileEntry& entry = getFileEntry(fileIndex);
 		if (entry.nameHash == nameHash)
 		{
 			if ((entry.flag & FILE_DELETE) != 0)
@@ -728,21 +837,22 @@ int Package::getFileIndex(u64 nameHash) const
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 u32 Package::insertFileEntry(FileEntry& entry, const Char* filename)
 {
-	u32 maxIndex = (u32)m_fileEntries.size();
+	u32 maxIndex = getFileCount();
 	u64 lastEnd = m_header.headerSize;
 
 	//file with 0 size will alway be put to the end
 	for (u32 fileIndex = 0; fileIndex < maxIndex; ++fileIndex)
 	{
-		FileEntry& thisEntry = m_fileEntries[fileIndex];
+		FileEntry& thisEntry = getFileEntry(fileIndex);
 		if (thisEntry.byteOffset >= lastEnd + entry.packSize
 			&& (lastEnd + entry.packSize <= m_header.fileEntryOffset
-			|| lastEnd >= m_header.filenameOffset + m_header.filenameSize))	//don't overwrite old file entries and filenames
+			|| lastEnd >= m_header.filenameOffset + m_header.allFilenameSize))	//don't overwrite old file entries and filenames
 		{
 			entry.byteOffset = lastEnd;
-			m_fileEntries.insert(m_fileEntries.begin() + fileIndex, entry);
+			m_fileEntries.insert(m_fileEntries.begin() + fileIndex * m_header.fileEntrySize, m_header.fileEntrySize, 0);
+			thisEntry = entry;
 			m_filenames.insert(m_filenames.begin() + fileIndex, filename);
-			assert(m_filenames.size() == m_fileEntries.size());
+			assert(m_filenames.size() == getFileCount());
 			//user may call addFile or removeFile before calling flush, so hash table need to be fixed
 			fixHashTable(fileIndex);
 			return fileIndex;
@@ -763,16 +873,19 @@ u32 Package::insertFileEntry(FileEntry& entry, const Char* filename)
 		entry.byteOffset = m_packageEnd;
 		m_packageEnd += entry.packSize;
 	}
-	m_fileEntries.push_back(entry);
+	m_fileEntries.insert(m_fileEntries.end(), m_header.fileEntrySize, 0);
+	u32 newFileCount = getFileCount();
+	getFileEntry(newFileCount - 1) = entry;
+
 	m_filenames.push_back(filename);
-	assert(m_filenames.size() == m_fileEntries.size());
+	assert(m_filenames.size() == newFileCount);
 	return m_filenames.size() - 1;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool Package::insertFileHash(u64 nameHash, u32 entryIndex)
 {
-	u32 requireSize = m_fileEntries.size() * HASH_TABLE_SCALE;
+	u32 requireSize = getFileCount() * HASH_TABLE_SCALE;
 	u32 tableSize = m_hashTable.size();
 	if (tableSize < requireSize)
 	{
@@ -782,7 +895,7 @@ bool Package::insertFileHash(u64 nameHash, u32 entryIndex)
 	u32 index = (nameHash & m_hashMask);
 	while (m_hashTable[index] != -1)
 	{
-		const FileEntry& entry = m_fileEntries[m_hashTable[index]];
+		const FileEntry& entry = getFileEntry(m_hashTable[index]);
 		if ((entry.flag & FILE_DELETE) == 0 && entry.nameHash == nameHash)
 		{
 			//it's possible that file is added back right after it's deleted
@@ -931,7 +1044,7 @@ u32 Package::getFileAvailableSize(u64 nameHash) const
 	{
 		return 0;
 	}
-	const FileEntry& entry = m_fileEntries[fileIndex];
+	const FileEntry& entry = getFileEntry(fileIndex);
 	if ((entry.flag & FILE_WRITING) == 0)
 	{
 		return entry.packSize;
@@ -947,7 +1060,7 @@ bool Package::setFileAvailableSize(u64 nameHash, u32 size)
 	{
 		return false;
 	}
-	FileEntry& entry = m_fileEntries[fileIndex];
+	FileEntry& entry = getFileEntry(fileIndex);
 	if ((entry.flag & FILE_WRITING) == 0)
 	{
 		return false;

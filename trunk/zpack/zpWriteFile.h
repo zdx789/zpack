@@ -14,7 +14,13 @@ public:
 	WriteFile(Package* package, u64 offset, u32 size, u32 flag, u64 nameHash);
 	~WriteFile();
 
+	virtual u32 size() const;
+
 	virtual u32 flag() const;
+
+	virtual void seek(u32 pos);
+
+	virtual u32 tell() const;
 
 	virtual u32 write(const u8* buffer, u32 size);
 

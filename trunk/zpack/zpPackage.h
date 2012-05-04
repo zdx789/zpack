@@ -31,12 +31,13 @@ struct PackageHeader
 	u32	fileCount;
 	u64	fileEntryOffset;
 	u64 filenameOffset;
-	u32	fileEntrySize;		//size of all file entries, in bytes
-	u32 filenameSize;		//size of all filenames, in bytes
-	u32 originFilenameSize;	//filename size before compression
-	u32 chunkSize;			//file compress unit
+	u32	allFileEntrySize;
+	u32 allFilenameSize;
+	u32 originFilenamesSize;	//filename size before compression
+	u32 chunkSize;				//file compress unit
 	u32	flag;
-	u32 reserved[19];
+	u32 fileEntrySize;
+	u32 reserved[18];
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -48,7 +49,7 @@ struct FileEntry
 	u32 originSize;
 	u32 flag;
 	u32 chunkSize;	//can be different with chunkSize in package header
-	u32 reserved[2];
+	u64 contentHash;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -74,12 +75,15 @@ public:
 
 	virtual u32 getFileCount() const;
 	virtual bool getFileInfo(u32 index, Char* filenameBuffer, u32 filenameBufferSize,
-							u32* fileSize = 0, u32* packSize = 0, u32* flag = 0) const;
+							u32* fileSize = 0, u32* packSize = 0, u32* flag = 0, u64* contentHash = 0) const;
+	virtual bool getFileInfo(const Char* filename, u32* fileSize = 0, u32* packSize = 0,
+							u32* flag = 0, u64* contentHash = 0) const;
 
 	virtual bool addFile(const Char* filename, const Char* exterFilename, u32 fileSize, u32 flag,
 						u32* outPackSize = 0, u32* outFlag = 0);
 	virtual IWriteFile* createFile(const Char* filename, u32 fileSize, u32 packSize,
-									u32 chunkSize = 0, u32 flag = 0);
+									u32 chunkSize = 0, u32 flag = 0, u64 contentHash = 0);
+	virtual IWriteFile* openFileToWrite(const wchar_t* filename);
 	virtual void closeFile(IWriteFile* file);
 
 	virtual bool removeFile(const Char* filename);
@@ -87,6 +91,11 @@ public:
 	virtual void flush();
 
 	virtual bool defrag(Callback callback, void* callbackParam);
+
+	virtual u32 getFileUserDataSize() const;
+
+	virtual bool writeFileUserData(const Char* filename, const u8* data, u32 dataLen);
+	virtual bool readFileUserData(const Char* filename, u8* data, u32 dataLen);
 
 private:
 	bool readHeader();
@@ -114,13 +123,15 @@ private:
 	u32 getFileAvailableSize(u64 nameHash) const;
 	bool setFileAvailableSize(u64 nameHash, u32 size);
 
+	FileEntry& getFileEntry(u32 index) const;
+
 private:
 	String					m_packageFilename;
 	mutable FILE*			m_stream;
 	PackageHeader			m_header;
 	u32						m_hashBits;
 	std::vector<int>		m_hashTable;
-	std::vector<FileEntry>	m_fileEntries;
+	std::vector<u8>			m_fileEntries;
 	std::vector<String>		m_filenames;
 	u64						m_packageEnd;
 	u32						m_hashMask;
@@ -129,9 +140,20 @@ private:
 	std::vector<u32>		m_chunkPosBuffer;
 	mutable void*			m_lastSeekFile;
 	bool					m_readonly;
-	bool					m_readFilename;
 	bool					m_dirty;
 };
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+inline u32 Package::getFileCount() const
+{
+	return (u32)(m_fileEntries.size() / m_header.fileEntrySize);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+inline FileEntry& Package::getFileEntry(u32 index) const
+{
+	return *((FileEntry*)&m_fileEntries[index * m_header.fileEntrySize]);
+}
 
 }
 
