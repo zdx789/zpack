@@ -47,7 +47,7 @@ const u32 PACK_UNICODE = 1;
 
 const u32 FILE_DELETE = (1<<0);
 const u32 FILE_COMPRESS = (1<<1);
-const u32 FILE_WRITING = (1<<2);
+//const u32 FILE_WRITING = (1<<2);
 
 const u32 FILE_FLAG_USER0 = (1<<10);
 const u32 FILE_FLAG_USER1 = (1<<11);
@@ -74,10 +74,10 @@ public:
 	virtual void closeFile(IReadFile* file) = 0;
 
 	virtual u32 getFileCount() const = 0;
-	virtual bool getFileInfo(u32 index, Char* filenameBuffer, u32 filenameBufferSize,
-							u32* fileSize = 0, u32* packSize = 0, u32* flag = 0, u64* contentHash = 0) const = 0;
+	virtual bool getFileInfo(u32 index, Char* filenameBuffer, u32 filenameBufferSize, u32* fileSize = 0,
+							u32* packSize = 0, u32* flag = 0, u32* availableSize = 0, u64* contentHash = 0) const = 0;
 	virtual bool getFileInfo(const Char* filename, u32* fileSize = 0, u32* packSize = 0,
-							u32* flag = 0, u64* contentHash = 0) const = 0;
+							u32* flag = 0, u32* availableSize = 0, u64* contentHash = 0) const = 0;
 
 	///////////////////////////////////////////////////////////////////////////////////////////////
 	//package manipulation fuctions, not available in read only mode
@@ -86,7 +86,7 @@ public:
 	//outFileSize	origin file size
 	//outPackSize	size in package
 	virtual bool addFile(const Char* filename, const Char* externalFilename, u32 fileSize, u32 flag,
-						u32* outPackSize = 0, u32* outFlag = 0) = 0;
+						u32* outPackSize = 0, u32* outFlag = 0, u32 chunkSize = 0) = 0;
 
 	virtual IWriteFile* createFile(const Char* filename, u32 fileSize, u32 packSize,
 									u32 chunkSize = 0, u32 flag = 0, u64 contentHash = 0) = 0;

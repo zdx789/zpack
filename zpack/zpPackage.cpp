@@ -2,9 +2,11 @@
 #include "zpFile.h"
 #include "zpCompressedFile.h"
 #include "zpWriteFile.h"
+#include "WriteCompressFile.h"
+#include "zlib.h"
 #include <cassert>
 #include <sstream>
-#include "zlib.h"
+
 //#include "PerfUtil.h"
 //#include "windows.h"
 
@@ -168,7 +170,7 @@ void Package::closeFile(IWriteFile* file)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool Package::getFileInfo(u32 index, Char* filenameBuffer, u32 filenameBufferSize, u32* fileSize,
-							u32* packSize, u32* flag, u64* contentHash) const
+							u32* packSize, u32* flag, u32* availableSize, u64* contentHash) const
 {
 	if (index >= m_filenames.size())
 	{
@@ -192,6 +194,10 @@ bool Package::getFileInfo(u32 index, Char* filenameBuffer, u32 filenameBufferSiz
 	{
 		*flag = entry.flag;
 	}
+	if (availableSize != NULL)
+	{
+		*availableSize = entry.availableSize;
+	}
 	if (contentHash != NULL)
 	{
 		*contentHash = entry.contentHash;
@@ -200,7 +206,8 @@ bool Package::getFileInfo(u32 index, Char* filenameBuffer, u32 filenameBufferSiz
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-bool Package::getFileInfo(const Char* filename, u32* fileSize, u32* packSize, u32* flag, u64* contentHash) const
+bool Package::getFileInfo(const Char* filename, u32* fileSize, u32* packSize, u32* flag,
+						u32* availableSize, u64* contentHash) const
 {
 	int fileIndex = getFileIndex(filename);
 	if (fileIndex < 0)
@@ -220,6 +227,10 @@ bool Package::getFileInfo(const Char* filename, u32* fileSize, u32* packSize, u3
 	{
 		*flag = entry.flag;
 	}
+	if (availableSize != NULL)
+	{
+		*availableSize = entry.availableSize;
+	}
 	if (contentHash != NULL)
 	{
 		*contentHash = entry.contentHash;
@@ -229,7 +240,7 @@ bool Package::getFileInfo(const Char* filename, u32* fileSize, u32* packSize, u3
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool Package::addFile(const Char* filename, const Char* externalFilename, u32 fileSize, u32 flag,
-						u32* outPackSize, u32* outFlag)
+						u32* outPackSize, u32* outFlag, u32 chunkSize)
 {
 	if (m_readonly)
 	{
@@ -257,6 +268,7 @@ bool Package::addFile(const Char* filename, const Char* externalFilename, u32 fi
 	entry.flag = flag;
 	entry.chunkSize = m_header.chunkSize;
 	entry.contentHash = 0;
+	entry.availableSize = fileSize;
 	//memset(entry.reserved, 0, sizeof(entry.reserved));
 
 	u32 insertedIndex = insertFileEntry(entry, filename);
@@ -280,7 +292,20 @@ bool Package::addFile(const Char* filename, const Char* externalFilename, u32 fi
 		}
 		else
 		{
-			writeCompressFile(getFileEntry(insertedIndex), file);
+			if (chunkSize == 0)
+			{
+				chunkSize = m_header.chunkSize;
+				m_chunkData.resize(chunkSize);
+				m_compressBuffer.resize(chunkSize);
+			}
+			FileEntry& dstEntry = getFileEntry(insertedIndex);
+			dstEntry.packSize = writeCompressFile(m_stream, entry.byteOffset, file, dstEntry.originSize, chunkSize, dstEntry.flag,
+												m_chunkData, m_compressBuffer, m_chunkPosBuffer);
+			//temp
+			if (m_packageEnd == dstEntry.byteOffset + dstEntry.originSize)
+			{
+				m_packageEnd = dstEntry.byteOffset + dstEntry.packSize;
+			}
 		}
 	}
 	fclose(file);
@@ -315,16 +340,16 @@ IWriteFile* Package::createFile(const Char* filename, u32 fileSize, u32 packSize
 
 	FileEntry entry;
 	entry.nameHash = stringHash(filename, HASH_SEED);
+	entry.flag = flag;
 	entry.packSize = packSize;
 	entry.originSize = fileSize;
-	flag |= FILE_WRITING;
-	entry.flag = flag;
+	entry.contentHash = contentHash;
+	entry.availableSize = 0;
 	if ((entry.flag & FILE_COMPRESS) == 0)
 	{
 		chunkSize = 0;
 	}
 	entry.chunkSize = chunkSize;
-	entry.contentHash = contentHash;
 	//memset(entry.reserved, 0, sizeof(entry.reserved));
 
 	u32 insertedIndex = insertFileEntry(entry, filename);
@@ -949,6 +974,7 @@ void Package::writeRawFile(FileEntry& entry, FILE* file)
 	_fseeki64(m_stream, entry.byteOffset, SEEK_SET);
 
 	u32 chunkCount = (entry.originSize + m_header.chunkSize - 1) / m_header.chunkSize;
+	m_chunkData.resize(m_header.chunkSize);
 	for (u32 i = 0; i < chunkCount; ++i)
 	{
 		u32 curChunkSize = m_header.chunkSize;
@@ -962,81 +988,6 @@ void Package::writeRawFile(FileEntry& entry, FILE* file)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-void Package::writeCompressFile(FileEntry& entry, FILE* file)
-{
-	_fseeki64(m_stream, entry.byteOffset, SEEK_SET);
-
-	u32 chunkCount = (entry.originSize + m_header.chunkSize - 1) / m_header.chunkSize;
-	m_chunkPosBuffer.resize(chunkCount);
-
-	entry.packSize = 0;
-	if (chunkCount > 1)
-	{
-		m_chunkPosBuffer[0] = chunkCount * sizeof(u32);
-		fwrite(&m_chunkPosBuffer[0], chunkCount * sizeof(u32), 1, m_stream);
-	}
-
-	//BEGIN_PERF("compress");
-
-	u8* dstBuffer = &m_compressBuffer[0];
-	for (u32 i = 0; i < chunkCount; ++i)
-	{
-		u32 curChunkSize = m_header.chunkSize;
-		if (i == chunkCount - 1 && entry.originSize % m_header.chunkSize != 0)
-		{
-			curChunkSize = entry.originSize % m_header.chunkSize;
-		}
-		fread(&m_chunkData[0], curChunkSize, 1, file);
-
-		//__int64 perfBefore, perfAfter, perfFreq;
-		//::QueryPerformanceFrequency((LARGE_INTEGER*)&perfFreq);
-		//::QueryPerformanceCounter((LARGE_INTEGER*)&perfBefore);
-
-		u32 dstSize = m_header.chunkSize;
-		int ret = compress(dstBuffer, &dstSize, &m_chunkData[0], curChunkSize);
-
-		//::QueryPerformanceCounter((LARGE_INTEGER*)&perfAfter);
-		//double perfTime = 1000.0 * (perfAfter - perfBefore) / perfFreq;
-		//g_compressTime += perfTime;
-
-		if (ret != Z_OK	|| dstSize >= curChunkSize)
-		{
-			//compress failed or compressed size greater than origin, write raw data
-			fwrite(&m_chunkData[0], curChunkSize, 1, m_stream);
-			dstSize = curChunkSize;
-		}
-		else
-		{
-			fwrite(dstBuffer, dstSize, 1, m_stream);
-		}
-		if (i + 1 < chunkCount)
-		{
-			m_chunkPosBuffer[i + 1] = m_chunkPosBuffer[i] + dstSize;
-		}
-		entry.packSize += dstSize;
-	}
-	
-	//END_PERF
-
-	if (chunkCount > 1)
-	{
-		entry.packSize += chunkCount * sizeof(u32);
-		_fseeki64(m_stream, entry.byteOffset, SEEK_SET);
-		fwrite(&m_chunkPosBuffer[0], chunkCount * sizeof(u32), 1, m_stream);
-	}
-	else if (entry.packSize == entry.originSize)
-	{
-		//only 1 chunk and not compressed, entire file should not be compressed
-		entry.flag &= (~FILE_COMPRESS);
-	}
-	//temp
-	if (m_packageEnd == entry.byteOffset + entry.originSize)
-	{
-		m_packageEnd = entry.byteOffset + entry.packSize;
-	}
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
 u32 Package::getFileAvailableSize(u64 nameHash) const
 {
 	int fileIndex = getFileIndex(nameHash);
@@ -1045,11 +996,7 @@ u32 Package::getFileAvailableSize(u64 nameHash) const
 		return 0;
 	}
 	const FileEntry& entry = getFileEntry(fileIndex);
-	if ((entry.flag & FILE_WRITING) == 0)
-	{
-		return entry.packSize;
-	}
-	return entry.flag & 0xfffff000;
+	return entry.availableSize;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1061,19 +1008,8 @@ bool Package::setFileAvailableSize(u64 nameHash, u32 size)
 		return false;
 	}
 	FileEntry& entry = getFileEntry(fileIndex);
-	if ((entry.flag & FILE_WRITING) == 0)
-	{
-		return false;
-	}
+	entry.availableSize = size;
 	m_dirty = true;
-
-	entry.flag = (entry.flag & 0x00000fff) | (size & 0xfffff000);
-	if (size == entry.packSize)
-	{
-		//done
-		entry.flag &= ~FILE_WRITING;
-		entry.flag &= 0x00000fff;
-	}
 	return true;
 }
 

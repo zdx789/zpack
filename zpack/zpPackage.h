@@ -45,11 +45,12 @@ struct FileEntry
 {
 	u64	byteOffset;
 	u64	nameHash;
-	u32	packSize;	//size in package
+	u32	packSize;	//size in package(may be compressed)
 	u32 originSize;
 	u32 flag;
 	u32 chunkSize;	//can be different with chunkSize in package header
 	u64 contentHash;
+	u32 availableSize;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -74,13 +75,13 @@ public:
 	virtual void closeFile(IReadFile* file);
 
 	virtual u32 getFileCount() const;
-	virtual bool getFileInfo(u32 index, Char* filenameBuffer, u32 filenameBufferSize,
-							u32* fileSize = 0, u32* packSize = 0, u32* flag = 0, u64* contentHash = 0) const;
+	virtual bool getFileInfo(u32 index, Char* filenameBuffer, u32 filenameBufferSize, u32* fileSize = 0,
+							u32* packSize = 0, u32* flag = 0, u32* availableSize = 0, u64* contentHash = 0) const;
 	virtual bool getFileInfo(const Char* filename, u32* fileSize = 0, u32* packSize = 0,
-							u32* flag = 0, u64* contentHash = 0) const;
+							u32* flag = 0, u32* availableSize = 0, u64* contentHash = 0) const;
 
 	virtual bool addFile(const Char* filename, const Char* exterFilename, u32 fileSize, u32 flag,
-						u32* outPackSize = 0, u32* outFlag = 0);
+						u32* outPackSize = 0, u32* outFlag = 0, u32 chunkSize = 0);
 	virtual IWriteFile* createFile(const Char* filename, u32 fileSize, u32 packSize,
 									u32 chunkSize = 0, u32 flag = 0, u64 contentHash = 0);
 	virtual IWriteFile* openFileToWrite(const wchar_t* filename);
@@ -117,7 +118,6 @@ private:
 	void fixHashTable(u32 index);
 
 	void writeRawFile(FileEntry& entry, FILE* file);
-	void writeCompressFile(FileEntry& entry, FILE* file);
 
 	//for writing file
 	u32 getFileAvailableSize(u64 nameHash) const;
