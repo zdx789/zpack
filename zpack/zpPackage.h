@@ -6,6 +6,10 @@
 #include <vector>
 #include "stdio.h"
 
+#ifdef _ZP_WIN32_THREAD_SAFE
+#include <windows.h>
+#endif
+
 namespace zp
 {
 
@@ -126,6 +130,9 @@ private:
 	FileEntry& getFileEntry(u32 index) const;
 
 private:
+#ifdef _ZP_WIN32_THREAD_SAFE
+	mutable CRITICAL_SECTION	m_cs;
+#endif
 	String					m_packageFilename;
 	mutable FILE*			m_stream;
 	PackageHeader			m_header;
@@ -154,6 +161,24 @@ inline FileEntry& Package::getFileEntry(u32 index) const
 {
 	return *((FileEntry*)&m_fileEntries[index * m_header.fileEntrySize]);
 }
+
+#ifdef _ZP_WIN32_THREAD_SAFE
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+	class Lock
+	{
+	public:
+		Lock(LPCRITICAL_SECTION cs) : m_cs(cs){::EnterCriticalSection(m_cs);}
+		~Lock()	{::LeaveCriticalSection(m_cs);}
+		LPCRITICAL_SECTION m_cs;
+	};
+
+	#define SCOPE_LOCK		Lock localLock(&m_cs)
+	#define PACKAGE_LOCK	Lock localLock(&m_package->m_cs)
+
+#else
+	#define SCOPE_LOCK
+	#define PACKAGE_LOCK
+#endif
 
 }
 

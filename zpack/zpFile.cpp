@@ -36,6 +36,8 @@ u32 File::size() const
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 u32 File::availableSize() const
 {
+	PACKAGE_LOCK;
+
 	return m_package->getFileAvailableSize(m_nameHash);
 }
 
@@ -67,6 +69,8 @@ u32 File::tell() const
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 u32 File::read(u8* buffer, u32 size)
 {
+	PACKAGE_LOCK;
+
 	//not preventing user from reading over available size here
 	if (m_readPos + size > m_size)
 	{

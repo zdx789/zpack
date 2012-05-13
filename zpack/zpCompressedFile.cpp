@@ -98,6 +98,8 @@ u32 CompressedFile::size() const
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 u32 CompressedFile::availableSize() const
 {
+	PACKAGE_LOCK;
+
 	u32 rawAvailableSize = m_package->getFileAvailableSize(m_nameHash);
 	if (rawAvailableSize == m_compressedSize)
 	{
@@ -151,6 +153,8 @@ u32 CompressedFile::tell() const
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 u32 CompressedFile::read(u8* buffer, u32 size)
 {
+	PACKAGE_LOCK;
+
 	//BEGIN_PERF("read")
 
 	if (m_readPos + size > m_originSize)

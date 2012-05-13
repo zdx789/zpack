@@ -58,6 +58,8 @@ u32 WriteFile::tell() const
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 u32 WriteFile::write(const u8* buffer, u32 size)
 {
+	PACKAGE_LOCK;
+
 	if (m_writePos + size > m_size)
 	{
 		size = m_size - m_writePos;

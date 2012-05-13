@@ -37,6 +37,10 @@ Package::Package(const Char* filename, bool readonly, bool readFilename)
 	, m_lastSeekFile(NULL)
 	, m_dirty(false)
 {
+#ifdef _ZP_WIN32_THREAD_SAFE
+	::InitializeCriticalSection(&m_cs);
+#endif
+
 	//require filename to modify package
 	if (!readFilename && !readonly)
 	{
@@ -91,6 +95,9 @@ Package::~Package()
 		flush();
 		fclose(m_stream);
 	}
+#ifdef _ZP_WIN32_THREAD_SAFE
+	::DeleteCriticalSection(&m_cs);
+#endif
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -114,20 +121,16 @@ const Char* Package::packageFilename() const
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool Package::hasFile(const Char* filename) const
 {
-	//if (m_dirty)
-	//{
-	//	return false;
-	//}
+	SCOPE_LOCK;
+
 	return (getFileIndex(filename) >= 0);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 IReadFile* Package::openFile(const Char* filename)
 {
-	//if (m_dirty)
-	//{
-	//	return NULL;
-	//}
+	SCOPE_LOCK;
+
 	int fileIndex = getFileIndex(filename);
 	if (fileIndex < 0)
 	{
@@ -152,6 +155,8 @@ IReadFile* Package::openFile(const Char* filename)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void Package::closeFile(IReadFile* file)
 {
+	SCOPE_LOCK;
+
 	if ((file->flag() & FILE_COMPRESS) == 0)
 	{
 		delete static_cast<File*>(file);
@@ -165,6 +170,8 @@ void Package::closeFile(IReadFile* file)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void Package::closeFile(IWriteFile* file)
 {
+	SCOPE_LOCK;
+
 	delete static_cast<WriteFile*>(file);
 }
 
@@ -172,6 +179,8 @@ void Package::closeFile(IWriteFile* file)
 bool Package::getFileInfo(u32 index, Char* filenameBuffer, u32 filenameBufferSize, u32* fileSize,
 							u32* packSize, u32* flag, u32* availableSize, u64* contentHash) const
 {
+	SCOPE_LOCK;
+
 	if (index >= m_filenames.size())
 	{
 		return false;
@@ -209,6 +218,8 @@ bool Package::getFileInfo(u32 index, Char* filenameBuffer, u32 filenameBufferSiz
 bool Package::getFileInfo(const Char* filename, u32* fileSize, u32* packSize, u32* flag,
 						u32* availableSize, u64* contentHash) const
 {
+	SCOPE_LOCK;
+
 	int fileIndex = getFileIndex(filename);
 	if (fileIndex < 0)
 	{
@@ -242,11 +253,16 @@ bool Package::getFileInfo(const Char* filename, u32* fileSize, u32* packSize, u3
 bool Package::addFile(const Char* filename, const Char* externalFilename, u32 fileSize, u32 flag,
 						u32* outPackSize, u32* outFlag, u32 chunkSize)
 {
+	SCOPE_LOCK;
+
 	if (m_readonly)
 	{
 		return false;
 	}
-
+	if (chunkSize == 0)
+	{
+		chunkSize = m_header.chunkSize;
+	}
 	FILE* file = Fopen(externalFilename, _T("rb"));
 	if (file == NULL)
 	{
@@ -266,7 +282,7 @@ bool Package::addFile(const Char* filename, const Char* externalFilename, u32 fi
 	entry.packSize = fileSize;
 	entry.originSize = fileSize;
 	entry.flag = flag;
-	entry.chunkSize = m_header.chunkSize;
+	entry.chunkSize = chunkSize;
 	entry.contentHash = 0;
 	entry.availableSize = fileSize;
 	//memset(entry.reserved, 0, sizeof(entry.reserved));
@@ -292,12 +308,8 @@ bool Package::addFile(const Char* filename, const Char* externalFilename, u32 fi
 		}
 		else
 		{
-			if (chunkSize == 0)
-			{
-				chunkSize = m_header.chunkSize;
-				m_chunkData.resize(chunkSize);
-				m_compressBuffer.resize(chunkSize);
-			}
+			m_chunkData.resize(chunkSize);
+			m_compressBuffer.resize(chunkSize);
 			FileEntry& dstEntry = getFileEntry(insertedIndex);
 			dstEntry.packSize = writeCompressFile(m_stream, entry.byteOffset, file, dstEntry.originSize, chunkSize, dstEntry.flag,
 												m_chunkData, m_compressBuffer, m_chunkPosBuffer);
@@ -325,6 +337,8 @@ bool Package::addFile(const Char* filename, const Char* externalFilename, u32 fi
 IWriteFile* Package::createFile(const Char* filename, u32 fileSize, u32 packSize, u32 chunkSize,
 								u32 flag, u64 contentHash)
 {
+	SCOPE_LOCK;
+
 	if (m_readonly)
 	{
 		return NULL;
@@ -367,6 +381,8 @@ IWriteFile* Package::createFile(const Char* filename, u32 fileSize, u32 packSize
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 IWriteFile* Package::openFileToWrite(const wchar_t* filename)
 {
+	SCOPE_LOCK;
+
 	if (m_readonly)
 	{
 		return NULL;
@@ -387,6 +403,8 @@ IWriteFile* Package::openFileToWrite(const wchar_t* filename)
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool Package::removeFile(const Char* filename)
 {
+	SCOPE_LOCK;
+
 	if (m_readonly)
 	{
 		return false;
@@ -411,6 +429,8 @@ bool Package::dirty() const
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void Package::flush()
 {
+	SCOPE_LOCK;
+
 	if (m_readonly || !m_dirty)
 	{
 		return;
@@ -433,6 +453,8 @@ void Package::flush()
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool Package::defrag(Callback callback, void* callbackParam)
 {
+	SCOPE_LOCK;
+
 	if (m_readonly || m_dirty)
 	{
 		return false;
@@ -529,6 +551,8 @@ u32 Package::getFileUserDataSize() const
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool Package::writeFileUserData(const Char* filename, const u8* data, u32 dataLen)
 {
+	SCOPE_LOCK;
+
 	if (dataLen > getFileUserDataSize())
 	{
 		return false;
@@ -546,6 +570,8 @@ bool Package::writeFileUserData(const Char* filename, const u8* data, u32 dataLe
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 bool Package::readFileUserData(const Char* filename, u8* data, u32 dataLen)
 {
+	SCOPE_LOCK;
+
 	if (dataLen > getFileUserDataSize())
 	{
 		return false;
