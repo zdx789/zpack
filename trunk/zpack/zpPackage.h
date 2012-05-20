@@ -55,6 +55,7 @@ struct FileEntry
 	u32 chunkSize;	//can be different with chunkSize in package header
 	u64 contentHash;
 	u32 availableSize;
+	u32 reserved;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

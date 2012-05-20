@@ -34,16 +34,8 @@ u32 writeCompressFile(FILE* dstFile, u64 offset, FILE* srcFile, u32 srcFileSize,
 		}
 		fread(&chunkData[0], curChunkSize, 1, srcFile);
 
-		//__int64 perfBefore, perfAfter, perfFreq;
-		//::QueryPerformanceFrequency((LARGE_INTEGER*)&perfFreq);
-		//::QueryPerformanceCounter((LARGE_INTEGER*)&perfBefore);
-
 		u32 dstSize = chunkSize;
 		int ret = compress(dstBuffer, &dstSize, &chunkData[0], curChunkSize);
-
-		//::QueryPerformanceCounter((LARGE_INTEGER*)&perfAfter);
-		//double perfTime = 1000.0 * (perfAfter - perfBefore) / perfFreq;
-		//g_compressTime += perfTime;
 
 		if (ret != Z_OK	|| dstSize >= curChunkSize)
 		{
