@@ -285,6 +285,7 @@ bool Package::addFile(const Char* filename, const Char* externalFilename, u32 fi
 	entry.chunkSize = chunkSize;
 	entry.contentHash = 0;
 	entry.availableSize = fileSize;
+	entry.reserved = 0;
 	//memset(entry.reserved, 0, sizeof(entry.reserved));
 
 	u32 insertedIndex = insertFileEntry(entry, filename);
@@ -359,6 +360,7 @@ IWriteFile* Package::createFile(const Char* filename, u32 fileSize, u32 packSize
 	entry.originSize = fileSize;
 	entry.contentHash = contentHash;
 	entry.availableSize = 0;
+	entry.reserved = 0;
 	if ((entry.flag & FILE_COMPRESS) == 0)
 	{
 		chunkSize = 0;
@@ -447,6 +449,10 @@ void Package::flush()
 
 	buildHashTable();
 
+	if (m_header.filenameOffset + m_header.allFilenameSize > m_packageEnd)
+	{
+		m_packageEnd = m_header.filenameOffset + m_header.allFilenameSize;
+	}
 	m_dirty = false;
 }
 
@@ -728,6 +734,18 @@ void Package::removeDeletedEntries()
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 void Package::writeTables(bool avoidOverwrite)
 {
+	if (m_fileEntries.empty())
+	{
+		//nothing to write
+		m_header.fileCount = 0;
+		m_header.allFileEntrySize = 0;
+		m_header.allFilenameSize = 0;
+		m_header.fileEntryOffset = sizeof(m_header);
+		m_header.filenameOffset = m_header.fileEntryOffset;
+		m_header.originFilenamesSize = 0;
+		return;
+	}
+
 	//compress file entries
 	u32 srcEntrySize = m_fileEntries.size();
 	u32 dstEntrySize = srcEntrySize;
@@ -757,33 +775,27 @@ void Package::writeTables(bool avoidOverwrite)
 	}
 
 	//find pos to write
-	if (m_fileEntries.empty())
+	u32 lastIndex = getFileCount() - 1;
+	FileEntry& last =  getFileEntry(lastIndex);
+	u64 lastFileEnd = last.byteOffset + last.packSize;
+	if (avoidOverwrite)
 	{
-		m_header.fileEntryOffset = sizeof(m_header);
-	}
-	else
-	{
-		u32 lastIndex = getFileCount() - 1;
-		FileEntry& last =  getFileEntry(lastIndex);
-		u64 lastFileEnd = last.byteOffset + last.packSize;
-		if (avoidOverwrite)
-		{
-			if ((lastFileEnd >= m_header.filenameOffset + m_header.allFilenameSize) ||
-				(lastFileEnd + dstEntrySize + dstFilenameSize <= m_header.fileEntryOffset))
-			{
-				m_header.fileEntryOffset = lastFileEnd;
-			}
-			else
-			{
-				m_header.fileEntryOffset = m_header.filenameOffset + m_header.allFilenameSize;
-			}
-		}
-		else
+		if ((lastFileEnd >= m_header.filenameOffset + m_header.allFilenameSize)
+			|| (lastFileEnd + dstEntrySize + dstFilenameSize <= m_header.fileEntryOffset))
 		{
 			m_header.fileEntryOffset = lastFileEnd;
 		}
+		else
+		{
+			m_header.fileEntryOffset = m_header.filenameOffset + m_header.allFilenameSize;
+		}
+	}
+	else
+	{
+		m_header.fileEntryOffset = lastFileEnd;
 	}
 
+	//write
 	_fseeki64(m_stream, m_header.fileEntryOffset, SEEK_SET);
 	if (dstEntrySize == srcEntrySize)
 	{
@@ -895,9 +907,10 @@ u32 Package::insertFileEntry(FileEntry& entry, const Char* filename)
 	for (u32 fileIndex = 0; fileIndex < maxIndex; ++fileIndex)
 	{
 		FileEntry& thisEntry = getFileEntry(fileIndex);
+		//avoid overwritting old file entries and filenames
 		if (thisEntry.byteOffset >= lastEnd + entry.packSize
 			&& (lastEnd + entry.packSize <= m_header.fileEntryOffset
-			|| lastEnd >= m_header.filenameOffset + m_header.allFilenameSize))	//don't overwrite old file entries and filenames
+				|| lastEnd >= m_header.filenameOffset + m_header.allFilenameSize))
 		{
 			entry.byteOffset = lastEnd;
 			m_fileEntries.insert(m_fileEntries.begin() + fileIndex * m_header.fileEntrySize, m_header.fileEntrySize, 0);
@@ -911,7 +924,7 @@ u32 Package::insertFileEntry(FileEntry& entry, const Char* filename)
 		lastEnd = thisEntry.byteOffset + thisEntry.packSize;
 	}
 
-	if (m_fileEntries.empty() || m_header.fileEntryOffset > lastEnd + entry.packSize)
+	if (m_header.fileCount == 0 || m_header.fileEntryOffset > lastEnd + entry.packSize)
 	{
 		entry.byteOffset = lastEnd;
 		if (entry.byteOffset + entry.packSize > m_packageEnd)
