@@ -89,7 +89,7 @@ public:
 						u32* outPackSize = 0, u32* outFlag = 0, u32 chunkSize = 0);
 	virtual IWriteFile* createFile(const Char* filename, u32 fileSize, u32 packSize,
 									u32 chunkSize = 0, u32 flag = 0, u64 contentHash = 0);
-	virtual IWriteFile* openFileToWrite(const wchar_t* filename);
+	virtual IWriteFile* openFileToWrite(const Char* filename);
 	virtual void closeFile(IWriteFile* file);
 
 	virtual bool removeFile(const Char* filename);

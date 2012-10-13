@@ -40,6 +40,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
+				AdditionalIncludeDirectories="zlib"
 				PreprocessorDefinitions="WIN32;_DEBUG;_LIB;_CRT_SECURE_NO_WARNINGS"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -102,6 +103,7 @@
 			/>
 			<Tool
 				Name="VCCLCompilerTool"
+				AdditionalIncludeDirectories="zlib"
 				PreprocessorDefinitions="WIN32;NDEBUG;_LIB;_CRT_SECURE_NO_WARNINGS"
 				RuntimeLibrary="0"
 				UsePrecompiledHeader="0"
@@ -141,12 +143,76 @@
 	<References>
 	</References>
 	<Files>
+		<Filter
+			Name="zlib"
+			>
+			<File
+				RelativePath=".\zlib\adler32.c"
+				>
+			</File>
+			<File
+				RelativePath=".\zlib\compress.c"
+				>
+			</File>
+			<File
+				RelativePath=".\zlib\crc32.c"
+				>
+			</File>
+			<File
+				RelativePath=".\zlib\deflate.c"
+				>
+			</File>
+			<File
+				RelativePath=".\zlib\infback.c"
+				>
+			</File>
+			<File
+				RelativePath=".\zlib\inffast.c"
+				>
+			</File>
+			<File
+				RelativePath=".\zlib\inflate.c"
+				>
+			</File>
+			<File
+				RelativePath=".\zlib\inftrees.c"
+				>
+			</File>
+			<File
+				RelativePath=".\zlib\trees.c"
+				>
+			</File>
+			<File
+				RelativePath=".\zlib\uncompr.c"
+				>
+			</File>
+			<File
+				RelativePath=".\zlib\zutil.c"
+				>
+			</File>
+		</Filter>
+		<File
+			RelativePath=".\WriteCompressFile.cpp"
+			>
+		</File>
+		<File
+			RelativePath=".\WriteCompressFile.h"
+			>
+		</File>
 		<File
 			RelativePath=".\zpack.cpp"
 			>
 		</File>
 		<File
 			RelativePath=".\zpack.h"
+			>
+		</File>
+		<File
+			RelativePath=".\zpCompressedFile.cpp"
+			>
+		</File>
+		<File
+			RelativePath=".\zpCompressedFile.h"
 			>
 		</File>
 		<File
@@ -163,6 +229,14 @@
 		</File>
 		<File
 			RelativePath=".\zpPackage.h"
+			>
+		</File>
+		<File
+			RelativePath=".\zpWriteFile.cpp"
+			>
+		</File>
+		<File
+			RelativePath=".\zpWriteFile.h"
 			>
 		</File>
 	</Files>
