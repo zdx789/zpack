@@ -381,7 +381,7 @@ IWriteFile* Package::createFile(const Char* filename, u32 fileSize, u32 packSize
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-IWriteFile* Package::openFileToWrite(const wchar_t* filename)
+IWriteFile* Package::openFileToWrite(const Char* filename)
 {
 	SCOPE_LOCK;
 

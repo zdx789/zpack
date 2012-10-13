@@ -90,7 +90,7 @@ public:
 
 	virtual IWriteFile* createFile(const Char* filename, u32 fileSize, u32 packSize,
 									u32 chunkSize = 0, u32 flag = 0, u64 contentHash = 0) = 0;
-	virtual IWriteFile* openFileToWrite(const wchar_t* filename) = 0;
+	virtual IWriteFile* openFileToWrite(const Char* filename) = 0;
 	virtual void closeFile(IWriteFile* file) = 0;
 
 	//can not remove files added after last flush() call
