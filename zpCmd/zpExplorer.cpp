@@ -6,6 +6,7 @@
 #include <algorithm>
 #include "fileEnum.h"
 #include "windows.h"
+#include "shlobj.h"
 //#include "PerfUtil.h"
 
 using namespace std;
@@ -502,7 +503,7 @@ bool ZpExplorer::extractRecursively(ZpNode* node, zp::String externalPath, zp::S
 		HANDLE findFile = ::FindFirstFile(externalPath.c_str(), &fd);
 		if (findFile == INVALID_HANDLE_VALUE)
 		{
-			if (!::CreateDirectory(externalPath.c_str(), NULL))
+			if (::SHCreateDirectoryEx(NULL, externalPath.c_str(), NULL) != ERROR_SUCCESS)
 			{
 				return false;
 			}

@@ -137,10 +137,48 @@ CMD_PROC(help)
 	return true;
 }
 
+bool processCmdLine(int argc, _TCHAR* argv[])
+{
+	if (argc < 4)
+	{
+		return false;
+	}
+	zp::String cmd = argv[1];
+	zp::String packPath = argv[2];
+	zp::String filePath = argv[3];
+
+	if (cmd == _T("add"))
+	{
+		if (!g_explorer.open(packPath))
+		{
+			g_explorer.create(packPath, _T(""));
+		}
+		zp::String relativePath;
+		if (argc > 4)
+		{
+			relativePath = argv[4];
+		}
+		g_explorer.add(filePath, relativePath);
+	}
+	else if (cmd == _T("extract"))
+	{
+		if (g_explorer.open(packPath))
+		{
+			g_explorer.extract(_T("."), filePath);
+		}
+	}
+	g_explorer.close();
+	return true;
+}
+
 int _tmain(int argc, _TCHAR* argv[])
 {
 	g_explorer.setCallback(zpcallback, NULL);
 
+	if (processCmdLine(argc, argv))
+	{
+		return 0;
+	}
 	REGISTER_CMD(exit);
 	REGISTER_CMD(create);
 	REGISTER_CMD(open);
