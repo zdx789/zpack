@@ -121,4 +121,6 @@ private:
 	zp::u64			m_totalFileSize;
 };
 
+void stringToLower(zp::String& dst, const zp::String& src);
+
 #endif

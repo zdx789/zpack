@@ -347,8 +347,8 @@ void CMainFrame::OnDropFiles(HDROP hDropInfo)
 		zp::String lowerExt;
 		if (length >= 4)
 		{
-			lowerExt = filename.substr(length - 4, 4);
-			std::transform(lowerExt.begin(), lowerExt.end(), lowerExt.begin(), ::tolower);
+			zp::String temp = filename.substr(length - 4, 4);
+			stringToLower(lowerExt, temp);
 		}
 		if (lowerExt == _T(".zpk"))
 		{
