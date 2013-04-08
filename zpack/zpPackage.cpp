@@ -720,7 +720,8 @@ void Package::removeDeletedEntries()
 		FileEntry& entry = getFileEntry(i);
 		if ((entry.flag & FILE_DELETE) != 0)
 		{
-			m_fileEntries.erase(m_fileEntries.begin(), m_fileEntries.begin() + m_header.fileEntrySize);
+			std::vector<u8>::iterator eraseBegin = m_fileEntries.begin() + i * m_header.fileEntrySize;
+			m_fileEntries.erase(eraseBegin, eraseBegin + m_header.fileEntrySize);
 			nameIter = m_filenames.erase(nameIter);
 			m_dirty = true;
 			--fileCount;
@@ -988,7 +989,11 @@ u64 Package::stringHash(const Char* str, u32 seed) const
 	#if (ZP_CASE_SENSITIVE)
 		out = out * seed + ch;
 	#else
-		out = out * seed + tolower(ch);
+		#if defined ZP_USE_WCHAR
+			out = out * seed + towlower(ch);
+		#else
+			out = out * seed + tolower(ch);
+		#endif
 	#endif
 	}
 	return out;

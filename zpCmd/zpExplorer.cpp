@@ -131,7 +131,7 @@ bool ZpExplorer::enterDir(const zp::String& path)
 	assert(m_currentNode != NULL);
 #if !(ZP_CASE_SENSITIVE)
 	zp::String lowerPath = path;
-	transform(path.begin(), path.end(), lowerPath.begin(), ::tolower);
+	stringToLower(lowerPath, path);
 	ZpNode* child = findChildRecursively(m_currentNode, lowerPath, FIND_DIR);
 #else
 	ZpNode* child = findChildRecursively(m_currentNode, path, FIND_DIR);
@@ -221,7 +221,7 @@ bool ZpExplorer::remove(const zp::String& path)
 	list<ZpNode>::iterator found;
 #if !(ZP_CASE_SENSITIVE)
 	zp::String lowerPath = path;
-	transform(path.begin(), path.end(), lowerPath.begin(), ::tolower);
+	stringToLower(lowerPath, path);
 	ZpNode* child = findChildRecursively(m_currentNode, lowerPath, FIND_ANY);
 #else
 	ZpNode* child = findChildRecursively(m_currentNode, path, FIND_ANY);
@@ -282,7 +282,7 @@ bool ZpExplorer::extract(const zp::String& srcPath, const zp::String& dstPath)
 	}
 #if !(ZP_CASE_SENSITIVE)
 	zp::String lowerPath = srcPath;
-	transform(srcPath.begin(), srcPath.end(), lowerPath.begin(), ::tolower);
+	stringToLower(lowerPath, srcPath);
 	ZpNode* child = findChildRecursively(m_currentNode, lowerPath, FIND_ANY);
 #else
 	ZpNode* child = findChildRecursively(m_currentNode, srcPath, FIND_ANY);
@@ -540,7 +540,7 @@ void ZpExplorer::insertFileToTree(const zp::String& filename, zp::u32 fileSize, 
 			//it's a file
 		#if !(ZP_CASE_SENSITIVE)
 			zp::String lowerName = filenameLeft;
-			transform(filenameLeft.begin(), filenameLeft.end(), lowerName.begin(), ::tolower);
+			stringToLower(lowerName, filenameLeft);
 			ZpNode* child = checkFileExist ? findChild(node, lowerName, FIND_FILE) : NULL;
 		#else
 			ZpNode* child = checkFileExist ? findChild(node, filenameLeft, FIND_FILE) : NULL;
@@ -572,7 +572,7 @@ void ZpExplorer::insertFileToTree(const zp::String& filename, zp::u32 fileSize, 
 		filenameLeft = filenameLeft.substr(pos + 1, filenameLeft.length() - pos - 1);
 	#if !(ZP_CASE_SENSITIVE)
 		zp::String lowerName = dirName;
-		transform(dirName.begin(), dirName.end(), lowerName.begin(), ::tolower);
+		stringToLower(lowerName, dirName);
 		ZpNode* child = findChild(node, lowerName, FIND_DIR);
 	#else
 		ZpNode* child = findChild(node, dirName, FIND_DIR);
@@ -720,4 +720,14 @@ void ZpExplorer::minusAncesterSize(ZpNode* node)
 		ancester->compressSize -= node->compressSize;
 		ancester = ancester->parent;
 	}
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+void stringToLower(zp::String& dst, const zp::String& src)
+{
+#if defined ZP_USE_WCHAR
+	transform(src.begin(), src.end(), dst.begin(), ::towlower);
+#else
+	transform(src.begin(), src.end(), dst.begin(), ::tolower);
+#endif
 }
