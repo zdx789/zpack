@@ -7,11 +7,11 @@
 	#define ZP_USE_WCHAR
 #endif
 
-#if defined (_MSC_VER)
-	#define ZP_CASE_SENSITIVE	0
-#else
-	#define ZP_CASE_SENSITIVE	1
-#endif
+//#if defined (_MSC_VER)
+#define ZP_CASE_SENSITIVE	0
+//#else
+//	#define ZP_CASE_SENSITIVE	1
+//#endif
 
 namespace zp
 {
