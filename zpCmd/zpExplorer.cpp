@@ -725,6 +725,7 @@ void ZpExplorer::minusAncesterSize(ZpNode* node)
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 void stringToLower(zp::String& dst, const zp::String& src)
 {
+	dst = src;
 #if defined ZP_USE_WCHAR
 	transform(src.begin(), src.end(), dst.begin(), ::towlower);
 #else
